@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  dev:
+    # Build the image from the Dockerfile in the current directory
+    build: .
+    # Mount the entire project directory into the container's /app directory
+    volumes:
+      - .:/app
+    # Map the exposed container ports to our local machine
+    ports:
+      - "9944:9944"
+      - "9615:9615"
+    # Keep the container running
+    tty: true
