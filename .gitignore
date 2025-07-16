@@ -1,0 +1,18 @@
+# Rust build artifacts
+/target
+.rustc_info.json
+Cargo.lock
+
+# Node.js dependencies
+/node_modules
+
+# IDE metadata
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
