@@ -1,0 +1,11 @@
+# Ignore build artifacts
+target/
+
+# Ignore node modules
+node_modules/
+
+# Ignore git history
+.git/
+
+# Ignore VS Code settings
+.vscode/
