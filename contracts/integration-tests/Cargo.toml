@@ -1,0 +1,21 @@
+[package]
+name = "integration-tests"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ink.workspace = true
+scale.workspace = true
+scale-info.workspace = true
+powergrid-shared.workspace = true
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+    "powergrid-shared/std",
+]

@@ -1,0 +1,27 @@
+[package]
+name = "resource_registry"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ink.workspace = true
+scale.workspace = true
+scale-info.workspace = true
+powergrid-shared.workspace = true
+
+[lib]
+name = "resource_registry"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+    "powergrid-shared/std",
+]
+ink-as-dependency = []

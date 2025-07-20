@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = [
+    "shared",
+    "contracts/resource_registry",
+    "contracts/grid_service", 
+    "contracts/token",
+    "contracts/governance",
+    "contracts/integration-tests",
+]
+exclude = [
+    "target",
+    "artifacts",
+    "node_modules",
+]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Kunal <kunaldrall29@gmail.com>", "Daksh"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/29projectslab/powergrid-network"
+
+[workspace.dependencies]
+ink = { version = "4.3", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"] }
+powergrid-shared = { path = "shared", default-features = false }
