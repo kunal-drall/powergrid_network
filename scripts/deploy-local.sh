@@ -1,49 +1,49 @@
 #!/bin/bash
 
-# PowerGrid Network Local Deployment Script
-set -e
-
 echo "🚀 Deploying PowerGrid Network Locally..."
 
-# Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m'
 
-# Check if ink-node is running
 check_node() {
-    if ! curl -s http://localhost:9933/health >/dev/null 2>&1; then
-        echo -e "${YELLOW}⚠️  ink-node not responding. Make sure it's running:${NC}"
-        echo "   ink-node --dev"
+    if curl -s http://localhost:9944 2>/dev/null | grep -q "Method is not allowed\|POST is required"; then
+        echo -e "${GREEN}✅ ink-node is running on port 9944${NC}"
+        return 0
+    else
+        echo -e "${YELLOW}⚠️  ink-node not responding${NC}"
         exit 1
     fi
-    echo -e "${GREEN}✅ ink-node is running${NC}"
 }
 
-# Deploy a contract
 deploy_contract() {
-    local CONTRACT_NAME=$1
-    local ARGS=$2
+    local CONTRACT_DIR=$1
+    local CONTRACT_NAME=$2
+    local ARGS=$3
     
     echo -e "${BLUE}🚀 Deploying $CONTRACT_NAME...${NC}"
-    cd contracts/$CONTRACT_NAME
     
-    # Deploy and capture output
+    cd contracts/$CONTRACT_DIR
+    
     OUTPUT=$(cargo contract instantiate \
         --constructor new \
-        --args "$ARGS" \
+        --args $ARGS \
         --suri //Alice \
         --url ws://localhost:9944 \
-        --execute 2>&1)
+        --execute \
+        --gas 1000000000000 \
+        --proof-size 1000000 2>&1)
     
-    # Extract contract address
-    ADDRESS=$(echo "$OUTPUT" | grep -o "Contract [A-Za-z0-9]*" | cut -d' ' -f2 | head -1)
+    echo "$OUTPUT"
+    
+    ADDRESS=$(echo "$OUTPUT" | grep -E "Contract [A-Za-z0-9]{48}" | head -1 | grep -oE "[A-Za-z0-9]{48}")
     
     if [ -z "$ADDRESS" ]; then
-        echo "❌ Deployment failed for $CONTRACT_NAME"
-        echo "$OUTPUT"
-        exit 1
+        echo -e "${RED}❌ Deployment failed for $CONTRACT_NAME${NC}"
+        cd ../..
+        return 1
     fi
     
     echo -e "${GREEN}✅ $CONTRACT_NAME: $ADDRESS${NC}"
@@ -51,20 +51,23 @@ deploy_contract() {
     echo "$ADDRESS"
 }
 
-# Main deployment
 main() {
     check_node
-    
     mkdir -p deployment
-    
     echo "📋 Deploying contracts in order..."
     
-    REGISTRY=$(deploy_contract "resource_registry" "1000000000000000000")
-    TOKEN=$(deploy_contract "powergrid_token" '"PowerGrid Token" "PGT" 18 1000000000000000000000')
-    GRID=$(deploy_contract "grid_service" "\"$REGISTRY\" \"$TOKEN\" 750")
-    GOV=$(deploy_contract "governance" "\"$TOKEN\" \"$REGISTRY\" \"$GRID\" 100000000000000000000 100 51")
+    REGISTRY=$(deploy_contract "resource_registry" "resource_registry" "1000000000000000000")
+    if [ $? -ne 0 ]; then exit 1; fi
     
-    # Save addresses
+    TOKEN=$(deploy_contract "token" "powergrid_token" '"PowerGrid Token" "PGT" 18 1000000000000000000000')
+    if [ $? -ne 0 ]; then exit 1; fi
+    
+    GRID=$(deploy_contract "grid_service" "grid_service" "\"$REGISTRY\" \"$TOKEN\" 750")
+    if [ $? -ne 0 ]; then exit 1; fi
+    
+    GOV=$(deploy_contract "governance" "governance" "\"$TOKEN\" \"$REGISTRY\" \"$GRID\" 100000000000000000000 100 51")
+    if [ $? -ne 0 ]; then exit 1; fi
+    
     cat > deployment/local-addresses.json << JSON
 {
   "resource_registry": "$REGISTRY",
