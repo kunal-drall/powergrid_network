@@ -7,7 +7,7 @@
 
 #[cfg(test)]
 mod tests {
-    use powergrid_shared::{DeviceMetadata, DeviceType, GridEventType, ProposalType};
+    
 
     /// Test the complete user journey from device registration to governance participation
     #[test]

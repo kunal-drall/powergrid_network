@@ -1,14 +1,14 @@
 [package]
 name = "powergrid-shared"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "0.1.0"
+authors = ["Kunal <kunaldrall29@gmail.com>", "Daksh"]
+edition = "2021"
+license = "MIT"
 
 [dependencies]
-ink.workspace = true
-scale.workspace = true
-scale-info.workspace = true
+ink = { version = "5.1.0", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.11", default-features = false, features = ["derive"] }
 
 [features]
 default = ["std"]

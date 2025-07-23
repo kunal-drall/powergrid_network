@@ -1,14 +1,26 @@
 use ink::prelude::string::String;
-use ink::storage::traits::StorageLayout;
 use scale::{Decode, Encode};
 use scale_info::TypeInfo;
 
-// Make these type aliases public
-pub type AccountId = <ink::env::DefaultEnvironment as ink::env::Environment>::AccountId;
-pub type Balance = <ink::env::DefaultEnvironment as ink::env::Environment>::Balance;
+#[cfg(feature = "std")]
+use ink::storage::traits::StorageLayout;
+
+// Use [u8; 32] directly - no type alias to avoid confusion
+pub type Balance = u128;
 pub type Timestamp = u64;
 
-#[derive(Decode, Encode, Clone, TypeInfo, StorageLayout, PartialEq, Debug)]
+// Helper functions for AccountId conversion
+pub fn ink_account_to_bytes(account: ink::primitives::AccountId) -> [u8; 32] {
+    let bytes: &[u8] = account.as_ref();
+    bytes.try_into().unwrap_or([0u8; 32])
+}
+
+pub fn bytes_to_ink_account(bytes: [u8; 32]) -> ink::primitives::AccountId {
+    ink::primitives::AccountId::from(bytes)
+}
+
+#[derive(Decode, Encode, Clone, TypeInfo, PartialEq, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub enum DeviceType {
     SmartPlug,
     EV,
@@ -19,7 +31,8 @@ pub enum DeviceType {
     Other(String),
 }
 
-#[derive(Decode, Encode, Clone, TypeInfo, StorageLayout, Debug)]
+#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct DeviceMetadata {
     pub device_type: DeviceType,
     pub capacity_watts: u64,
@@ -30,7 +43,8 @@ pub struct DeviceMetadata {
     pub installation_date: Timestamp,
 }
 
-#[derive(Decode, Encode, Clone, TypeInfo, StorageLayout, Debug)]
+#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct Device {
     pub metadata: DeviceMetadata,
     pub stake: Balance,
@@ -42,7 +56,8 @@ pub struct Device {
     pub active: bool,
 }
 
-#[derive(Decode, Encode, Clone, TypeInfo, StorageLayout, Debug)]
+#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub enum GridEventType {
     DemandResponse,
     FrequencyRegulation,
@@ -51,7 +66,8 @@ pub enum GridEventType {
     Emergency,
 }
 
-#[derive(Decode, Encode, Clone, TypeInfo, StorageLayout, Debug)]
+#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct GridEvent {
     pub event_type: GridEventType,
     pub duration_minutes: u64,
@@ -66,9 +82,10 @@ pub struct GridEvent {
     pub completed: bool,
 }
 
-#[derive(Decode, Encode, Clone, TypeInfo, StorageLayout, Debug)]
+#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct Participation {
-    pub participant: AccountId,
+    pub participant: [u8; 32],
     pub energy_contributed_wh: u64,
     pub participation_start: Timestamp,
     pub participation_end: Timestamp,
@@ -76,26 +93,28 @@ pub struct Participation {
     pub verified: bool,
 }
 
-#[derive(Decode, Encode, Clone, TypeInfo, StorageLayout, Debug)]
+#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub enum ProposalType {
     UpdateMinStake(Balance),
     UpdateCompensationRate(Balance),
     UpdateReputationThreshold(u32),
-    TreasurySpend(AccountId, Balance),
+    TreasurySpend([u8; 32], Balance),
     SystemUpgrade,
     Other(String),
 }
 
-#[derive(Decode, Encode, Clone, TypeInfo, StorageLayout, Debug)]
+#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct Proposal {
-    pub proposer: AccountId,
+    pub proposer: [u8; 32],
     pub proposal_type: ProposalType,
     pub description: String,
     pub yes_votes: u64,
     pub no_votes: u64,
     pub total_voting_power: u64,
     pub created_at: Timestamp,
-    pub voting_end: Timestamp,
+    pub voting_end: u64,
     pub executed: bool,
     pub active: bool,
 }

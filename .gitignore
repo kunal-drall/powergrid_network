@@ -39,3 +39,20 @@ yarn-error.log*
 # Temporary files
 temp/
 tmp/
+# Build artifacts
+target/
+artifacts/
+temp_contract/
+
+# Deployment (optional - keep if you want to track deployments)
+# deployment/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -9,10 +9,10 @@ cargo test --manifest-path shared/Cargo.toml
 
 # Test each contract
 echo "Testing Resource Registry..."
-cargo test --manifest-path contracts/resource-registry/Cargo.toml
+cargo test --manifest-path contracts/resource_registry/Cargo.toml
 
 echo "Testing Grid Service..."
-cargo test --manifest-path contracts/grid-service/Cargo.toml
+cargo test --manifest-path contracts/grid_service/Cargo.toml
 
 echo "Testing Token Contract..."
 cargo test --manifest-path contracts/token/Cargo.toml
