@@ -121,7 +121,7 @@ use powergrid_shared::{Proposal, ProposalType, ink_account_to_bytes};
             }
 
             let current_block = self.env().block_number();
-            let voting_end = current_block.saturating_add(self.voting_duration_blocks as u32);
+            let voting_end = (current_block as u64).saturating_add(self.voting_duration_blocks);
             let proposal_id = self.next_proposal_id;
 
             let proposal = Proposal {

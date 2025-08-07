@@ -1,3 +1,4 @@
+#![allow(clippy::cast_possible_truncation)]
 use ink::prelude::string::String;
 use scale::{Decode, Encode};
 use scale_info::TypeInfo;

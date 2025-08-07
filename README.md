@@ -28,8 +28,11 @@ This repository contains the complete implementation of PowerGrid Network's core
 - [📖 Smart Contracts](#-smart-contracts)
 - [🧪 Testing](#-testing)
 - [🚀 Deployment](#-deployment)
+- [🌐 Live Testnet Deployment](#-live-testnet-deployment)
 - [💡 Usage Guide](#-usage-guide)
 - [📚 API Documentation](#-api-documentation)
+- [🏗️ Project Structure](#️-project-structure)
+- [🔧 Development](#-development)
 - [🤝 Contributing](#-contributing)
 
 ---
@@ -43,7 +46,7 @@ This repository contains the complete implementation of PowerGrid Network's core
 
 ### **1. Clone and Setup**
 ```bash
-git clone <repository-url>
+git clone https://github.com/kunal-drall/powergrid_network.git
 cd powergrid_network
 ./scripts/setup.sh
 ```
@@ -67,6 +70,8 @@ ink-node
 ./scripts/deploy-local.sh
 ```
 
+The script will deploy all contracts and save their addresses to `deployment/local-addresses.json`.
+
 ---
 
 ## 🔧 **Setup**
@@ -77,6 +82,7 @@ ink-node
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup update stable
+rustup target add wasm32-unknown-unknown
 ```
 
 2. **Install cargo-contract**
@@ -88,7 +94,7 @@ cargo install cargo-contract --version 6.0.0-alpha --locked
 ```bash
 # Download from: https://github.com/paritytech/ink-node/releases
 # Or build from source
-cargo install --git https://github.com/paritytech/ink-node.git
+cargo install --git https://github.com/paritytech/ink-node.git --locked
 ```
 
 4. **Install Additional Tools**
@@ -103,7 +109,7 @@ cargo install mdbook
 ### **Environment Setup**
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/kunal-drall/powergrid_network.git
 cd powergrid_network
 
 # Install project dependencies
@@ -118,25 +124,29 @@ The PowerGrid Network consists of four interconnected smart contracts:
 
 ```mermaid
 graph TB
-    A[Resource Registry] --> C[Grid Service]
-    B[PowerGrid Token] --> C
-    C --> B
-    D[Governance] --> A
-    D --> B
-    D --> C
-    
-    A -.-> |Device Registration| Users
-    C -.-> |Grid Events| Users
-    B -.-> |Rewards| Users
-    D -.-> |Voting| Users
+    subgraph PowerGrid Network
+        D[Governance] --> A[Resource Registry]
+        D --> B[PowerGrid Token]
+        D --> C[Grid Service]
+        C --> B
+        A --> C
+    end
+
+    subgraph "User Interactions"
+        U1[Device Owners] --> A
+        U1 --> C
+        U1 --> D
+        U2[Grid Operators] --> C
+        U2 --> D
+    end
 ```
 
 ### **Core Components**
 
-1. **Resource Registry** - Device management and reputation
-2. **Grid Service** - Event coordination and participation
-3. **PowerGrid Token** - Reward mechanism and governance
-4. **Governance** - Decentralized parameter management
+1. **PowerGrid Token ($PWGD)** - PSP22-compliant token for rewards and staking
+2. **Resource Registry** - Device management, staking, and reputation system
+3. **Grid Service** - Event coordination and participation tracking
+4. **Governance** - Decentralized parameter management and voting
 
 ---
 
@@ -148,21 +158,24 @@ graph TB
 **Purpose:** Device registration, staking, and reputation management
 
 **Key Features:**
-- Device registration with metadata
+- Device registration with comprehensive metadata
 - Stake-based security model
 - Reputation scoring system
 - Cross-contract authorization
 
 **Core Functions:**
 ```rust
-// Register a new device
-register_device(device_type, stake, location, ...)
+// Register a new device with stake
+register_device(device_type, stake, location, manufacturer, model, firmware_version, installation_date)
 
 // Check device registration status
 is_device_registered(account) -> bool
 
 // Update device performance metrics
 update_device_performance(account, energy, success)
+
+// Check device reputation
+get_device_reputation(account) -> u32
 ```
 
 ### **2. Grid Service Contract**
@@ -171,40 +184,44 @@ update_device_performance(account, energy, success)
 **Purpose:** Grid event management and participation tracking
 
 **Key Features:**
-- Grid event lifecycle management
+- Grid event lifecycle management (DemandResponse, LoadBalancing, FrequencyRegulation)
 - Participation tracking and verification
-- Reward calculation with bonuses
+- Reward calculation with performance bonuses
 - Energy contribution recording
 
 **Core Functions:**
 ```rust
 // Create a new grid event
-create_grid_event(event_type, duration, rate, target)
+create_grid_event(event_type, duration_minutes, reward_rate, target_reduction)
 
 // Participate in an active event
 participate_in_event(event_id, energy_contribution)
 
 // Verify participant contributions
 verify_participation(event_id, participant, actual_reduction)
+
+// Get active events
+get_active_events() -> Vec<GridEvent>
 ```
 
 ### **3. PowerGrid Token Contract**
 `contracts/token/`
 
-**Purpose:** ERC-20 compatible token for rewards and governance
+**Purpose:** PSP22-compliant token for rewards and governance
 
 **Key Features:**
-- Standard ERC-20 functionality
+- Standard PSP22 functionality
 - Controlled minting for rewards
 - Burning mechanism for supply management
-- Role-based permissions
+- Role-based permissions system
 
 **Core Functions:**
 ```rust
-// Standard ERC-20 functions
+// Standard PSP22 functions
 transfer(to, amount) -> bool
 approve(spender, amount) -> bool
 balance_of(owner) -> Balance
+total_supply() -> Balance
 
 // Reward system functions
 mint(to, amount) -> bool  // Authorized minters only
@@ -217,7 +234,7 @@ burn(from, amount) -> bool // Authorized burners only
 **Purpose:** Decentralized governance and parameter management
 
 **Key Features:**
-- Proposal creation and voting
+- Proposal creation and voting system
 - Configurable quorum requirements
 - Parameter update mechanisms
 - Treasury management
@@ -232,6 +249,9 @@ vote(proposal_id, support, reason) -> bool
 
 // Execute passed proposals
 execute_proposal(proposal_id) -> bool
+
+// Get proposal status
+get_proposal(proposal_id) -> Proposal
 ```
 
 ---
@@ -260,9 +280,9 @@ cd contracts/governance && cargo test
 
 ### **Test Coverage**
 - **Resource Registry**: Device registration, staking, reputation, authorization
-- **Grid Service**: Event creation, participation, verification
-- **PowerGrid Token**: Transfers, minting, burning, permissions
-- **Governance**: Proposal lifecycle, voting, execution
+- **Grid Service**: Event creation, participation, verification, reward calculation
+- **PowerGrid Token**: Transfers, minting, burning, permissions, supply management
+- **Governance**: Proposal lifecycle, voting mechanics, execution, quorum handling
 
 ### **Integration Testing**
 ```bash
@@ -309,89 +329,156 @@ export DEPLOYER_SEED_PHRASE="your seed phrase"
 
 ---
 
+## 🌐 **Live Testnet Deployment**
+
+The PowerGrid Network is currently live on the POP Network Testnet. You can interact with the deployed contracts using the addresses below.
+
+### **Contract Addresses**
+
+| Contract | Address |
+|----------|---------|
+| Token | `5HcecRAGodKw4t2sDYWzMws5rsggzxUXvtiS2CapJTLZxQ8n` |
+| Resource Registry | `5F2edUrKTZ67sWAB2GEUdvM1oqyH5Vj6W8wK5GDWsLPTR6sA` |
+| Grid Service | `5DLdkNW2aLGvpSvp31pd2f62m9bJNomMEAFAdpsP7RFjWms3` |
+| Governance | `5E6Yw6XQGw2sspe4xnisUot5HGRhqTFELWs6vfQJPW8YAjcE` |
+
+A JSON file with these addresses is also available at `deployment/testnet-addresses.json`.
+
+---
+
 ## 💡 **Usage Guide**
+
+### **Environment Setup for Testnet Interaction**
+
+Set up your environment variables for convenience:
+
+```bash
+# Your secret seed phrase (e.g., from Subwallet or Talisman)
+export SEED_PHRASE="your twelve word seed phrase here"
+
+# The RPC endpoint for the testnet
+export RPC_URL="wss://rpc1.paseo.popnetwork.xyz/"
+
+# Contract Addresses
+export TOKEN_ADDR="5HcecRAGodKw4t2sDYWzMws5rsggzxUXvtiS2CapJTLZxQ8n"
+export REGISTRY_ADDR="5F2edUrKTZ67sWAB2GEUdvM1oqyH5Vj6W8wK5GDWsLPTR6sA"
+export GRID_ADDR="5DLdkNW2aLGvpSvp31pd2f62m9bJNomMEAFAdpsP7RFjWms3"
+export GOVERNANCE_ADDR="5E6Yw6XQGw2sspe4xnisUot5HGRhqTFELWs6vfQJPW8YAjcE"
+```
 
 ### **For Device Owners**
 
-1. **Register Your Device**
+#### **1. Register Your Device**
 ```bash
-# Example: Register a smart plug
+# From the project root, navigate to the contract directory
+cd contracts/resource_registry
+
+# Register a SmartPlug device with stake
 cargo contract call \
-    --contract <REGISTRY_ADDRESS> \
-    --message register_device \
-    --args '{"SmartPlug": null}' 1000 "Kitchen" "Brand" "Model" "1.0" \
-    --value 1000000000000000000 \
-    --suri //YourAccount \
-    --execute
+  --contract $REGISTRY_ADDR \
+  --message register_device \
+  --args '{"SmartPlug": null}' 2000 "Living Room" "PowerGrid Inc" "SmartNode-1" "1.0" 1754580839000 \
+  --value 100000000000000000000 \
+  --url $RPC_URL \
+  --suri "$SEED_PHRASE" \
+  --execute
 ```
 
-2. **Participate in Grid Events**
+#### **2. Check Registration Status**
 ```bash
+cargo contract call \
+  --contract $REGISTRY_ADDR \
+  --message is_device_registered \
+  --args <YOUR_ADDRESS> \
+  --url $RPC_URL \
+  --suri "$SEED_PHRASE"
+```
+
+#### **3. Participate in Grid Events**
+```bash
+# Navigate to grid service contract directory
+cd ../grid_service
+
 # Join an active grid event
 cargo contract call \
-    --contract <GRID_SERVICE_ADDRESS> \
-    --message participate_in_event \
-    --args 1 5000 \
-    --suri //YourAccount \
-    --execute
+  --contract $GRID_ADDR \
+  --message participate_in_event \
+  --args 1 5000 \
+  --url $RPC_URL \
+  --suri "$SEED_PHRASE" \
+  --execute
 ```
 
-3. **Check Your Rewards**
+#### **4. Check Your Rewards**
 ```bash
+# Navigate to token contract directory
+cd ../token
+
 # Check token balance
 cargo contract call \
-    --contract <TOKEN_ADDRESS> \
-    --message balance_of \
-    --args <YOUR_ADDRESS> \
-    --suri //YourAccount
+  --contract $TOKEN_ADDR \
+  --message balance_of \
+  --args <YOUR_ADDRESS> \
+  --url $RPC_URL \
+  --suri "$SEED_PHRASE"
 ```
 
 ### **For Grid Operators**
 
-1. **Create Grid Events**
+#### **1. Create Grid Events**
 ```bash
-# Create a demand response event
+# Navigate to the grid service directory
+cd contracts/grid_service
+
+# Create a "DemandResponse" event
 cargo contract call \
-    --contract <GRID_SERVICE_ADDRESS> \
-    --message create_grid_event \
-    --args "DemandResponse" 60 750 100 \
-    --suri //OperatorAccount \
-    --execute
+  --contract $GRID_ADDR \
+  --message create_grid_event \
+  --args "DemandResponse" 60 750 100 \
+  --url $RPC_URL \
+  --suri "$SEED_PHRASE" \
+  --execute
 ```
 
-2. **Verify Participation**
+#### **2. Verify Participation**
 ```bash
 # Verify actual energy contributions
 cargo contract call \
-    --contract <GRID_SERVICE_ADDRESS> \
-    --message verify_participation \
-    --args 1 <PARTICIPANT_ADDRESS> 4800 \
-    --suri //OperatorAccount \
-    --execute
+  --contract $GRID_ADDR \
+  --message verify_participation \
+  --args 1 <PARTICIPANT_ADDRESS> 4800 \
+  --url $RPC_URL \
+  --suri "$SEED_PHRASE" \
+  --execute
 ```
 
-### **For Governance**
+### **For Governance Participation**
 
-1. **Create Proposals**
+#### **1. Create Proposals**
 ```bash
+# Navigate to governance directory
+cd contracts/governance
+
 # Propose to update minimum stake
 cargo contract call \
-    --contract <GOVERNANCE_ADDRESS> \
-    --message create_proposal \
-    --args '{"UpdateMinStake": 2000000000000000000}' "Increase min stake to 2 tokens" \
-    --suri //YourAccount \
-    --execute
+  --contract $GOVERNANCE_ADDR \
+  --message create_proposal \
+  --args '{"UpdateMinStake": 2000000000000000000}' "Increase min stake to 2 tokens" \
+  --url $RPC_URL \
+  --suri "$SEED_PHRASE" \
+  --execute
 ```
 
-2. **Vote on Proposals**
+#### **2. Vote on Proposals**
 ```bash
 # Vote yes on proposal
 cargo contract call \
-    --contract <GOVERNANCE_ADDRESS> \
-    --message vote \
-    --args 1 true "I support this change" \
-    --suri //YourAccount \
-    --execute
+  --contract $GOVERNANCE_ADDR \
+  --message vote \
+  --args 1 true "I support this change" \
+  --url $RPC_URL \
+  --suri "$SEED_PHRASE" \
+  --execute
 ```
 
 ---
@@ -409,15 +496,17 @@ Generated contract metadata is available in:
 
 #### **Resource Registry Events**
 ```rust
-DeviceRegistered { device: AccountId, stake: Balance }
+DeviceRegistered { device: AccountId, stake: Balance, device_type: DeviceType }
 DeviceDeactivated { device: AccountId }
 ReputationUpdated { device: AccountId, new_reputation: u32 }
+StakeUpdated { device: AccountId, new_stake: Balance }
 ```
 
 #### **Grid Service Events**
 ```rust
-GridEventCreated { event_id: u64, event_type: GridEventType }
-ParticipationRecorded { event_id: u64, participant: AccountId }
+GridEventCreated { event_id: u64, event_type: GridEventType, duration: u64 }
+ParticipationRecorded { event_id: u64, participant: AccountId, energy_contribution: u64 }
+ParticipationVerified { event_id: u64, participant: AccountId, actual_reduction: u64 }
 RewardDistributed { event_id: u64, participant: AccountId, amount: Balance }
 ```
 
@@ -431,9 +520,10 @@ Burn { from: AccountId, value: Balance }
 
 #### **Governance Events**
 ```rust
-ProposalCreated { proposal_id: u64, proposer: AccountId }
-VoteCast { proposal_id: u64, voter: AccountId, support: bool }
+ProposalCreated { proposal_id: u64, proposer: AccountId, proposal_type: ProposalType }
+VoteCast { proposal_id: u64, voter: AccountId, support: bool, voting_power: Balance }
 ProposalExecuted { proposal_id: u64, successful: bool }
+QuorumReached { proposal_id: u64 }
 ```
 
 ---
@@ -492,9 +582,16 @@ cargo contract build --release
 
 ### **Code Style**
 - Follow standard Rust conventions
-- Use `clippy` for linting
-- Maintain test coverage
-- Document public APIs
+- Use `clippy` for linting: `cargo clippy --all-targets --all-features`
+- Maintain test coverage above 80%
+- Document all public APIs with rustdoc
+- Format code with `cargo fmt`
+
+### **Performance Optimization**
+- Monitor gas usage with `cargo contract build --release`
+- Profile contract size and optimize for WASM deployment
+- Use efficient data structures for storage
+- Minimize cross-contract calls
 
 ---
 
@@ -502,20 +599,27 @@ cargo contract build --release
 
 ### **Development Workflow**
 1. Fork the repository
-2. Create a feature branch
-3. Implement changes with tests
-4. Run full test suite
-5. Submit pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Implement changes with comprehensive tests
+4. Run full test suite (`./scripts/test-all.sh`)
+5. Submit pull request with detailed description
 
 ### **Testing Requirements**
-- All new code must include tests
-- Existing tests must continue to pass
+- All new code must include unit tests
 - Integration tests for cross-contract features
+- Existing tests must continue to pass
+- Minimum 80% code coverage
 
-### **Code Review**
+### **Code Review Process**
 - Security-focused reviews for smart contracts
 - Performance considerations for gas optimization
 - Usability testing for developer experience
+- Documentation review for API changes
+
+### **Issue Reporting**
+- Use GitHub issues for bug reports
+- Include reproduction steps and environment details
+- Tag issues appropriately (bug, enhancement, documentation)
 
 ---
 
@@ -530,6 +634,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **ink! Documentation**: https://use.ink/
 - **Polkadot Wiki**: https://wiki.polkadot.network/
 - **Substrate Developer Hub**: https://substrate.dev/
+- **POP Network Testnet**: https://popnetwork.xyz/
 
 ---
 
@@ -538,6 +643,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For questions and support:
 - Create an issue in this repository
 - Check the ink! documentation
+- Join the Polkadot technical community
 
 ---
 
