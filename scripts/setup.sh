@@ -33,16 +33,22 @@ rustup component add rust-src --toolchain stable
 rustup component list | grep rust-src
 
 # 6. Install substrate-contracts-node (binary)
-NODE_VERSION="v0.33.0"   # change if needed
-NODE_URL="https://github.com/paritytech/substrate-contracts-node/releases/download/${NODE_VERSION}/substrate-contracts-node-${NODE_VERSION}-ubuntu-x86_64.tar.gz"
+NODE_VERSION="v0.42.0"   # Latest version
+NODE_URL="https://github.com/paritytech/substrate-contracts-node/releases/download/${NODE_VERSION}/substrate-contracts-node-linux.tar.gz"
 
 echo "--- Downloading substrate-contracts-node ${NODE_VERSION} ---"
-wget -q --show-progress $NODE_URL -O substrate-contracts-node.tar.gz
+wget -q --show-progress $NODE_URL -O substrate-contracts-node-linux.tar.gz
 
 echo "--- Extracting substrate-contracts-node ---"
-tar -xvzf substrate-contracts-node.tar.gz
-sudo mv substrate-contracts-node /usr/local/bin/
-rm substrate-contracts-node.tar.gz
+tar -xzf substrate-contracts-node-linux.tar.gz
+
+# The binary is extracted to substrate-contracts-node-linux/ directory
+echo "--- Installing substrate-contracts-node to /usr/local/bin/ ---"
+chmod +x substrate-contracts-node-linux/substrate-contracts-node
+sudo mv substrate-contracts-node-linux/substrate-contracts-node /usr/local/bin/
+
+# Clean up
+rm -rf substrate-contracts-node-linux.tar.gz substrate-contracts-node-linux/
 
 # 7. Verify installation
 echo "--- Verifying installations ---"
