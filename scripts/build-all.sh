@@ -1,18 +1,17 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
 
 echo "=== Building all ink! contracts ==="
 
-ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
-CONTRACTS_DIR="$ROOT_DIR/contracts"
+CONTRACTS=("governance" "grid_service" "resource_registry" "token")
 
-for contract in "$CONTRACTS_DIR"/*; do
-  if [ -d "$contract" ] && [ -f "$contract/Cargo.toml" ]; then
-    echo "-> Building contract: $(basename "$contract")"
-    (cd "$contract" && cargo contract build --release)
-    echo "✅ Finished: $(basename "$contract")"
-    echo
-  fi
+for contract in "${CONTRACTS[@]}"; do
+  echo "-> Building contract: $contract"
+  pushd contracts/$contract > /dev/null
+  cargo clippy --all-targets --all-features
+  cargo contract build --release
+  popd > /dev/null
+  echo "✅ Finished: $contract"
 done
 
-echo "=== All contracts built successfully ==="
+echo "=== All contract builds completed successfully ==="
