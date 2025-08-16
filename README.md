@@ -24,14 +24,14 @@ This repository contains the complete implementation of PowerGrid Network's core
 
 - [🚀 Quick Start](#-quick-start)
 - [🔧 Setup](#-setup)
-- [🏗️ Architecture](#️-architecture)
+- [🗜️ Architecture](#️-architecture)
 - [📖 Smart Contracts](#-smart-contracts)
 - [🧪 Testing](#-testing)
 - [🚀 Deployment](#-deployment)
 - [🌐 Live Testnet Deployment](#-live-testnet-deployment)
 - [💡 Usage Guide](#-usage-guide)
 - [📚 API Documentation](#-api-documentation)
-- [🏗️ Project Structure](#️-project-structure)
+- [🗜️ Project Structure](#️-project-structure)
 - [🔧 Development](#-development)
 - [🤝 Contributing](#-contributing)
 
@@ -42,7 +42,7 @@ This repository contains the complete implementation of PowerGrid Network's core
 ### **Prerequisites**
 - Rust 1.85+ and Cargo
 - cargo-contract v6.0.0+
-- ink-node (for local testing)
+- Substrate Contracts Node (for local testing)
 
 ### **1. Clone and Setup**
 ```bash
@@ -63,8 +63,8 @@ cd powergrid_network
 
 ### **4. Deploy Locally**
 ```bash
-# Start ink-node in another terminal
-ink-node
+# Start substrate-contracts-node in another terminal
+substrate-contracts-node --dev
 
 # Deploy all contracts
 ./scripts/deploy-local.sh
@@ -81,20 +81,20 @@ The script will deploy all contracts and save their addresses to `deployment/loc
 1. **Install Rust and Cargo**
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup update stable
-rustup target add wasm32-unknown-unknown
+rustup install nightly
+rustup target add wasm32-unknown-unknown --toolchain nightly
 ```
 
 2. **Install cargo-contract**
 ```bash
-cargo install cargo-contract --version 6.0.0-alpha --locked
+cargo install cargo-contract --force --locked
 ```
 
-3. **Install ink-node** (for local development)
+3. **Install Substrate Contracts Node** (for local development)
 ```bash
-# Download from: https://github.com/paritytech/ink-node/releases
+# Download from: https://github.com/paritytech/substrate-contracts-node/releases
 # Or build from source
-cargo install --git https://github.com/paritytech/ink-node.git --locked
+cargo install contracts-node --git https://github.com/paritytech/substrate-contracts-node.git --force --locked
 ```
 
 4. **Install Additional Tools**
@@ -118,7 +118,7 @@ cargo build
 
 ---
 
-## 🏗️ **Architecture**
+## 🗜️ **Architecture**
 
 The PowerGrid Network consists of four interconnected smart contracts:
 
@@ -299,7 +299,7 @@ cd contracts/governance && cargo test
 
 1. **Start Local Node**
 ```bash
-ink-node
+substrate-contracts-node --dev
 ```
 
 2. **Deploy All Contracts**
@@ -528,7 +528,7 @@ QuorumReached { proposal_id: u64 }
 
 ---
 
-## 🏗️ **Project Structure**
+## 🗜️ **Project Structure**
 
 ```
 powergrid_network/
@@ -537,7 +537,7 @@ powergrid_network/
 │   ├── grid_service/           # Grid event coordination  
 │   ├── token/                  # PowerGrid Token (PWGD)
 │   └── governance/             # Decentralized governance
-├── shared/                     # Shared types and utilities
+├── contracts/powergrid_shared/  # Shared types and utilities
 │   ├── src/
 │   │   ├── types.rs           # Common data structures
 │   │   └── traits.rs          # Contract interfaces
@@ -625,7 +625,7 @@ cargo contract build --release
 
 ## 📜 **License**
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
