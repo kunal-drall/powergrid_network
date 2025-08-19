@@ -104,11 +104,11 @@ main() {
     fi
     
     # 5. Create deployment addresses file
-    cat > deployment/local-addresses.json << EOF
+cat << EOF > deployment/local-addresses.json
 {
   "contracts": {
     "powergrid_token": "$TOKEN_ADDR",
-    "resource_registry": "$REGISTRY_ADDR", 
+    "resource_registry": "$REGISTRY_ADDR",
     "grid_service": "$GRID_ADDR",
     "governance": "$GOV_ADDR"
   },
@@ -116,3 +116,4 @@ main() {
   "deployed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "deployer": "//Alice"
 }
+EOF
