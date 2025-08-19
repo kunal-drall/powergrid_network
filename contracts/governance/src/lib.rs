@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
-mod governance {
+pub mod governance {
     use ink::prelude::{string::String, vec::Vec};
     use ink::storage::Mapping;
 use powergrid_shared::{Proposal, ProposalType, ink_account_to_bytes};

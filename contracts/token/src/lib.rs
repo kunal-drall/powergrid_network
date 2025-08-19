@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
-mod powergrid_token {
+pub mod powergrid_token {
     use ink::prelude::{string::String, vec::Vec};
     use ink::storage::Mapping;
 use powergrid_shared::ink_account_to_bytes;

@@ -11,6 +11,12 @@ scale.workspace = true
 scale-info.workspace = true
 powergrid-shared.workspace = true
 
+# Include all contract dependencies for integration testing
+powergrid_token = { path = "../token", default-features = false }
+resource_registry = { path = "../resource_registry", default-features = false }
+grid_service = { path = "../grid_service", default-features = false }
+governance = { path = "../governance", default-features = false }
+
 [features]
 default = ["std"]
 std = [
@@ -18,4 +24,8 @@ std = [
     "scale/std",
     "scale-info/std",
     "powergrid-shared/std",
+    "powergrid_token/std",
+    "resource_registry/std", 
+    "grid_service/std",
+    "governance/std",
 ]

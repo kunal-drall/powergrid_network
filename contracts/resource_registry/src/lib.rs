@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
-mod resource_registry {
+pub mod resource_registry {
     use ink::prelude::{string::String, vec::Vec};
     use ink::storage::Mapping;
 use powergrid_shared::{DeviceMetadata, Device, ink_account_to_bytes};

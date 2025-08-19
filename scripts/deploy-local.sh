@@ -9,11 +9,13 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 check_node() {
-    if curl -s http://localhost:9944 2>/dev/null | grep -q "Method is not allowed\|POST is required"; then
-        echo -e "${GREEN}✅ ink-node is running on port 9944${NC}"
+    echo "🔍 Checking if substrate-contracts-node is running..."
+    if curl -s -H "Content-Type: application/json" -d '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params":[]}' http://localhost:9944 2>/dev/null | grep -q '"result"'; then
+        echo -e "${GREEN}✅ substrate-contracts-node is running on port 9944${NC}"
         return 0
     else
-        echo -e "${YELLOW}⚠️  ink-node not responding${NC}"
+        echo -e "${RED}❌ substrate-contracts-node not responding on port 9944${NC}"
+        echo -e "${YELLOW}💡 Please start it with: substrate-contracts-node --dev --tmp${NC}"
         exit 1
     fi
 }
@@ -21,65 +23,96 @@ check_node() {
 deploy_contract() {
     local CONTRACT_DIR=$1
     local CONTRACT_NAME=$2
-    local ARGS=$3
+    local CONSTRUCTOR_ARGS=$3
     
     echo -e "${BLUE}🚀 Deploying $CONTRACT_NAME...${NC}"
     
-    cd contracts/$CONTRACT_DIR
+    cd contracts/$CONTRACT_DIR || exit 1
     
+    # Build first to ensure we have the latest version
+    echo "📦 Building $CONTRACT_NAME..."
+    cargo contract build --release --quiet
+    
+    echo "🚀 Deploying $CONTRACT_NAME..."
     OUTPUT=$(cargo contract instantiate \
         --constructor new \
-        --args $ARGS \
+        --args "$CONSTRUCTOR_ARGS" \
         --suri //Alice \
         --url ws://localhost:9944 \
         --execute \
         --gas 1000000000000 \
-        --proof-size 1000000 2>&1)
+        --proof-size 1000000 \
+        --value 0 2>&1)
     
     echo "$OUTPUT"
     
-    ADDRESS=$(echo "$OUTPUT" | grep -E "Contract [A-Za-z0-9]{48}" | head -1 | grep -oE "[A-Za-z0-9]{48}")
+    # Extract contract address - updated regex for better matching
+    ADDRESS=$(echo "$OUTPUT" | grep -oE "Contract [A-Za-z0-9]{48}" | grep -oE "[A-Za-z0-9]{48}" | head -1)
     
     if [ -z "$ADDRESS" ]; then
-        echo -e "${RED}❌ Deployment failed for $CONTRACT_NAME${NC}"
+        echo -e "${RED}❌ Failed to extract contract address for $CONTRACT_NAME${NC}"
+        echo "Full output:"
+        echo "$OUTPUT"
         cd ../..
         return 1
     fi
     
-    echo -e "${GREEN}✅ $CONTRACT_NAME: $ADDRESS${NC}"
+    echo -e "${GREEN}✅ $CONTRACT_NAME deployed: $ADDRESS${NC}"
     cd ../..
     echo "$ADDRESS"
 }
 
 main() {
+    # Check if node is running
     check_node
+    
+    # Create deployment directory
     mkdir -p deployment
-    echo "📋 Deploying contracts in order..."
     
-    REGISTRY=$(deploy_contract "resource_registry" "resource_registry" "1000000000000000000")
-    if [ $? -ne 0 ]; then exit 1; fi
+    echo "📋 Deploying contracts in dependency order..."
     
-    TOKEN=$(deploy_contract "token" "powergrid_token" '"PowerGrid Token" "PGT" 18 1000000000000000000000')
-    if [ $? -ne 0 ]; then exit 1; fi
+    # 1. Deploy Token Contract first
+    echo -e "${BLUE}Step 1: Deploying PowerGrid Token...${NC}"
+    TOKEN_ADDR=$(deploy_contract "token" "PowerGrid Token" '"PowerGrid Token" "PGT" 18 1000000000000000000000')
+    if [ $? -ne 0 ] || [ -z "$TOKEN_ADDR" ]; then 
+        echo -e "${RED}❌ Token deployment failed${NC}"
+        exit 1
+    fi
     
-    GRID=$(deploy_contract "grid_service" "grid_service" "\"$REGISTRY\" \"$TOKEN\" 750")
-    if [ $? -ne 0 ]; then exit 1; fi
+    # 2. Deploy Resource Registry
+    echo -e "${BLUE}Step 2: Deploying Resource Registry...${NC}"
+    REGISTRY_ADDR=$(deploy_contract "resource_registry" "Resource Registry" "1000000000000000000")
+    if [ $? -ne 0 ] || [ -z "$REGISTRY_ADDR" ]; then 
+        echo -e "${RED}❌ Registry deployment failed${NC}"
+        exit 1
+    fi
     
-    GOV=$(deploy_contract "governance" "governance" "\"$TOKEN\" \"$REGISTRY\" \"$GRID\" 100000000000000000000 100 51")
-    if [ $? -ne 0 ]; then exit 1; fi
+    # 3. Deploy Grid Service
+    echo -e "${BLUE}Step 3: Deploying Grid Service...${NC}"
+    GRID_ADDR=$(deploy_contract "grid_service" "Grid Service" "$TOKEN_ADDR $REGISTRY_ADDR")
+    if [ $? -ne 0 ] || [ -z "$GRID_ADDR" ]; then 
+        echo -e "${RED}❌ Grid Service deployment failed${NC}"
+        exit 1
+    fi
     
-    cat > deployment/local-addresses.json << JSON
+    # 4. Deploy Governance
+    echo -e "${BLUE}Step 4: Deploying Governance...${NC}"
+    GOV_ADDR=$(deploy_contract "governance" "Governance" "$TOKEN_ADDR $REGISTRY_ADDR $GRID_ADDR 100000000000000000000 100 51")
+    if [ $? -ne 0 ] || [ -z "$GOV_ADDR" ]; then 
+        echo -e "${RED}❌ Governance deployment failed${NC}"
+        exit 1
+    fi
+    
+    # 5. Create deployment addresses file
+    cat > deployment/local-addresses.json << EOF
 {
-  "resource_registry": "$REGISTRY",
-  "powergrid_token": "$TOKEN", 
-  "grid_service": "$GRID",
-  "governance": "$GOV"
+  "contracts": {
+    "powergrid_token": "$TOKEN_ADDR",
+    "resource_registry": "$REGISTRY_ADDR", 
+    "grid_service": "$GRID_ADDR",
+    "governance": "$GOV_ADDR"
+  },
+  "network": "local",
+  "deployed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "deployer": "//Alice"
 }
-JSON
-    
-    echo ""
-    echo -e "${GREEN}🎉 All contracts deployed!${NC}"
-    echo "📄 Addresses saved to: deployment/local-addresses.json"
-}
-
-main "$@"

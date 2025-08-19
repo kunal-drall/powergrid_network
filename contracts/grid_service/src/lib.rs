@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
-mod grid_service {
+pub mod grid_service {
     use ink::prelude::{string::String, vec::Vec};
     use ink::storage::Mapping;
 use powergrid_shared::{GridEvent, GridEventType, Participation, ink_account_to_bytes};
