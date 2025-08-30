@@ -52,6 +52,20 @@ pub mod grid_service {
         pub last_updated: u64,
     }
 
+    /// Parameters for creating trigger rules to avoid too many function arguments
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[ink::scale_derive(Encode, Decode, TypeInfo)]
+    #[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
+    pub struct TriggerRuleParams {
+        pub event_type: GridEventType,
+        pub load_threshold_percentage: u8,
+        pub frequency_low_threshold: u32,
+        pub frequency_high_threshold: u32,
+        pub compensation_rate: Balance,
+        pub target_reduction_percentage: u8,
+        pub duration_minutes: u64,
+    }
+
     /// The GridService contract
     #[ink(storage)]
     pub struct GridService {
@@ -220,6 +234,17 @@ pub mod grid_service {
                 return Err("Unauthorized caller".into());
             }
 
+            self.create_grid_event_internal(event_type, duration_minutes, compensation_rate, target_reduction_kw)
+        }
+
+        /// Internal method to create grid events (bypasses authorization for auto-triggers)
+        fn create_grid_event_internal(
+            &mut self,
+            event_type: GridEventType,
+            duration_minutes: u64,
+            compensation_rate: Balance,
+            target_reduction_kw: u64,
+        ) -> Result<u64, String> {
             let now = self.env().block_timestamp();
             let event_id = self.next_event_id;
             
@@ -648,9 +673,19 @@ pub mod grid_service {
             };
 
             let load_percentage = if capacity_mw > 0 {
-                (load_mw.saturating_mul(100).saturating_div(capacity_mw)) as u8
+                match load_mw.checked_mul(100) {
+                    Some(load_times_100) => {
+                        match load_times_100.checked_div(capacity_mw) {
+                            Some(percentage) => {
+                                if percentage > 100 { 100u8 } else { percentage as u8 }
+                            },
+                            None => 0u8,
+                        }
+                    },
+                    None => 100u8, // overflow means very high load, cap at 100%
+                }
             } else {
-                0
+                0u8
             };
 
             self.current_grid_condition = Some(condition.clone());
@@ -708,7 +743,7 @@ pub mod grid_service {
                 };
 
                 // Create the event
-                match self.create_grid_event(
+                match self.create_grid_event_internal(
                     rule.event_type.clone(),
                     rule.duration_minutes,
                     rule.compensation_rate,
@@ -737,13 +772,7 @@ pub mod grid_service {
         #[ink(message)]
         pub fn create_trigger_rule(
             &mut self,
-            event_type: GridEventType,
-            load_threshold_percentage: u8,
-            frequency_low_threshold: u32,
-            frequency_high_threshold: u32,
-            compensation_rate: Balance,
-            target_reduction_percentage: u8,
-            duration_minutes: u64,
+            params: TriggerRuleParams,
         ) -> Result<u64, String> {
             let caller = self.env().caller();
             if caller != self.owner && caller != self.governance_address {
@@ -754,13 +783,13 @@ pub mod grid_service {
             let rule = AutoTriggerRule {
                 rule_id,
                 active: true,
-                event_type: event_type.clone(),
-                load_threshold_percentage,
-                frequency_low_threshold,
-                frequency_high_threshold,
-                compensation_rate,
-                target_reduction_percentage,
-                duration_minutes,
+                event_type: params.event_type.clone(),
+                load_threshold_percentage: params.load_threshold_percentage,
+                frequency_low_threshold: params.frequency_low_threshold,
+                frequency_high_threshold: params.frequency_high_threshold,
+                compensation_rate: params.compensation_rate,
+                target_reduction_percentage: params.target_reduction_percentage,
+                duration_minutes: params.duration_minutes,
             };
 
             self.trigger_rules.insert(rule_id, &rule);
@@ -768,10 +797,10 @@ pub mod grid_service {
 
             self.env().emit_event(TriggerRuleCreated {
                 rule_id,
-                event_type,
-                load_threshold: load_threshold_percentage,
-                frequency_low: frequency_low_threshold,
-                frequency_high: frequency_high_threshold,
+                event_type: params.event_type,
+                load_threshold: params.load_threshold_percentage,
+                frequency_low: params.frequency_low_threshold,
+                frequency_high: params.frequency_high_threshold,
             });
 
             Ok(rule_id)
@@ -964,15 +993,16 @@ pub mod grid_service {
             assert!(result.is_ok());
 
             // Test 2: Create an auto-trigger rule
-            let rule_result = grid_service.create_trigger_rule(
-                GridEventType::Emergency,
-                85, // Load threshold 85%
-                4950, // Low frequency 49.50 Hz
-                5050, // High frequency 50.50 Hz
-                1000, // Compensation rate
-                10,   // 10% reduction target
-                30,   // 30 minutes duration
-            );
+            let rule_params = TriggerRuleParams {
+                event_type: GridEventType::Emergency,
+                load_threshold_percentage: 85, // Load threshold 85%
+                frequency_low_threshold: 4950, // Low frequency 49.50 Hz
+                frequency_high_threshold: 5050, // High frequency 50.50 Hz
+                compensation_rate: 1000, // Compensation rate
+                target_reduction_percentage: 10, // 10% reduction target
+                duration_minutes: 30, // 30 minutes duration
+            };
+            let rule_result = grid_service.create_trigger_rule(rule_params);
             assert!(rule_result.is_ok());
             let rule_id = rule_result.unwrap();
             assert_eq!(rule_id, 1);
