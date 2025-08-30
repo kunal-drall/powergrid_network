@@ -9,6 +9,8 @@ ink = { version = "5.1.0", default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.11", default-features = false, features = ["derive"] }
 powergrid-shared = { path = "../../shared", default-features = false }
+powergrid_token = { path = "../token", default-features = false, features = ["ink-as-dependency"] }
+resource_registry = { path = "../resource_registry", default-features = false, features = ["ink-as-dependency"] }
 
 [dev-dependencies]
 ink_e2e = { version = "5.1.0" }

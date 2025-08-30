@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Note: this script generates other scripts via here-docs; requires LF line-endings.
 set -e
 
 echo "🔧 Setting up PowerGrid Network Integration Tests..."
@@ -221,7 +222,7 @@ chmod +x scripts/test-integration.sh
 echo -e "${GREEN}✅ Integration test script created${NC}"
 
 # Update the deploy script
-cat > scripts/deploy-local.sh << 'EOF'
+cat > scripts/deploy-local.sh << 'EODEPLOY'
 #!/bin/bash
 
 echo "🚀 Deploying PowerGrid Network Locally..."
@@ -358,7 +359,7 @@ EOF
 }
 
 main "$@"
-EOF
+EODEPLOY
 
 chmod +x scripts/deploy-local.sh
 echo -e "${GREEN}✅ Deployment script updated${NC}"

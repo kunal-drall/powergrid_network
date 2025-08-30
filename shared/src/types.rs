@@ -55,9 +55,11 @@ pub struct Device {
     pub failed_events: u32,
     pub last_activity: Timestamp,
     pub active: bool,
+    pub version: u32,
+    pub last_updated: Timestamp,
 }
 
-#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[derive(Decode, Encode, Clone, TypeInfo, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
 pub enum GridEventType {
     DemandResponse,
@@ -85,6 +87,20 @@ pub struct GridEvent {
 
 #[derive(Decode, Encode, Clone, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
+pub struct GridSignal {
+    pub event_type: GridEventType,
+    pub duration_minutes: u64,
+    pub target_reduction_kw: u64,
+    /// Severity scale 1-5 used to scale compensation rate
+    pub severity: u8,
+    /// If true, create/start an event with the given parameters
+    pub start: bool,
+    /// If present, attempt to complete this event
+    pub complete_event_id: Option<u64>,
+}
+
+#[derive(Decode, Encode, Clone, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct Participation {
     pub participant: [u8; 32],
     pub energy_contributed_wh: u64,
@@ -92,6 +108,7 @@ pub struct Participation {
     pub participation_end: Timestamp,
     pub reward_earned: Balance,
     pub verified: bool,
+    pub paid: bool,
 }
 
 #[derive(Decode, Encode, Clone, TypeInfo, Debug)]
@@ -103,6 +120,10 @@ pub enum ProposalType {
     TreasurySpend([u8; 32], Balance),
     SystemUpgrade,
     Other(String),
+    /// Governance role management
+    SetTokenMinter([u8; 32], bool),
+    SetRegistryAuthorizedCaller([u8; 32], bool),
+    SetGridAuthorizedCaller([u8; 32], bool),
 }
 
 #[derive(Decode, Encode, Clone, TypeInfo, Debug)]
