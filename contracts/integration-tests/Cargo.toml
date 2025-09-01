@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 ink.workspace = true
+ink_e2e.workspace = true
 scale.workspace = true
 scale-info.workspace = true
 powergrid-shared.workspace = true
@@ -21,6 +22,7 @@ governance = { path = "../governance", default-features = false }
 default = ["std"]
 std = [
     "ink/std",
+    "ink_e2e/std",
     "scale/std",
     "scale-info/std",
     "powergrid-shared/std",
@@ -29,3 +31,4 @@ std = [
     "grid_service/std",
     "governance/std",
 ]
+e2e-tests = []

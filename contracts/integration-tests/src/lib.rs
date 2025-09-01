@@ -2,12 +2,13 @@
 
 //! Integration tests for PowerGrid Network contracts
 //! 
-//! This crate contains integration tests that verify the interaction
-//! between all PowerGrid Network smart contracts through individual testing
-//! and state verification, avoiding symbol conflicts.
+//! This crate contains both simulation tests (for development) and 
+//! actual e2e contract deployment tests (for production verification)
+//! as requested by sacha-l's review.
 
+// Legacy simulation tests for development
 #[cfg(test)]
-mod tests {
+mod simulation_tests {
     use powergrid_shared::{DeviceMetadata, DeviceType, GridEventType, ProposalType};
 
     /// Test the complete user journey from device registration to governance participation
@@ -390,6 +391,10 @@ mod tests {
         }
     }
 }
+
+// Actual e2e tests with deployed contracts (addresses sacha-l's review)
+#[cfg(all(test, feature = "e2e-tests"))]
+mod real_e2e_tests;
 
 /// Integration test helpers
 #[cfg(test)]
