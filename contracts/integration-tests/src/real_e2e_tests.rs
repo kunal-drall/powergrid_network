@@ -7,8 +7,15 @@
 
 #[cfg(all(test, feature = "e2e-tests"))]
 mod tests {
-    use ink_e2e::build_message;
+    use ink_e2e::{build_message, ContractsBackend};
+    use ink_e2e::subxt::tx::Signer;
     use powergrid_shared::{DeviceMetadata, DeviceType, GridEventType, ProposalType};
+    
+    // Import contract references
+    use powergrid_token::powergrid_token::PowergridTokenRef;
+    use resource_registry::resource_registry::ResourceRegistryRef;
+    use grid_service::grid_service::GridServiceRef;
+    use governance::governance::GovernanceRef;
 
     type E2EResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -21,7 +28,7 @@ mod tests {
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
         // Deploy token contract
-        let token_constructor = powergrid_token::PowergridTokenRef::new(
+        let token_constructor = PowergridTokenRef::new(
             1_000_000_000_000_000_000_000u128, // 1000 tokens initial supply
             "PowerGrid Token".to_string(),
             "PGT".to_string(),
@@ -35,7 +42,7 @@ mod tests {
         let token_account = token_result.unwrap().account_id;
 
         // Deploy resource registry
-        let registry_constructor = resource_registry::ResourceRegistryRef::new(
+        let registry_constructor = ResourceRegistryRef::new(
             token_account,
             1_000_000_000_000_000_000u128, // 1 token minimum stake
         );
@@ -47,7 +54,7 @@ mod tests {
         let registry_account = registry_result.unwrap().account_id;
 
         // Deploy grid service with cross-contract references
-        let grid_constructor = grid_service::GridServiceRef::new(
+        let grid_constructor = GridServiceRef::new(
             token_account,
             registry_account,
         );
@@ -71,7 +78,7 @@ mod tests {
         
         let stake_amount = 2_000_000_000_000_000_000u128; // 2 tokens
         
-        let register_msg = build_message::<resource_registry::ResourceRegistryRef>(
+        let register_msg = build_message::<ResourceRegistryRef>(
             registry_account.clone()
         ).call(|registry| registry.register_device(device_metadata, stake_amount));
         
@@ -80,7 +87,7 @@ mod tests {
         assert!(register_result.unwrap().return_value().is_ok(), "Device should be registered successfully");
 
         // Test 2: Create grid event that will pay rewards via token contract
-        let create_event_msg = build_message::<grid_service::GridServiceRef>(
+        let create_event_msg = build_message::<GridServiceRef>(
             grid_account.clone()
         ).call(|grid| grid.create_grid_event(
             GridEventType::DemandResponse,
@@ -94,7 +101,7 @@ mod tests {
         let event_id = event_result.unwrap().return_value().unwrap();
 
         // Test 3: Participate in grid event
-        let participate_msg = build_message::<grid_service::GridServiceRef>(
+        let participate_msg = build_message::<GridServiceRef>(
             grid_account.clone()
         ).call(|grid| grid.participate_in_event(event_id, 75u64));
         
@@ -103,16 +110,16 @@ mod tests {
         assert!(participate_result.unwrap().return_value().is_ok(), "Participation should be recorded");
 
         // Test 4: Check initial token balance
-        let initial_balance_msg = build_message::<powergrid_token::PowergridTokenRef>(
+        let initial_balance_msg = build_message::<PowergridTokenRef>(
             token_account.clone()
         ).call(|token| token.balance_of(ink_e2e::alice().account_id()));
         
-        let initial_balance_result = client.call_dry_run(&ink_e2e::alice(), &initial_balance_msg, 0, None).await;
+        let initial_balance_result = client.bare_call_dry_run(&ink_e2e::alice(), &initial_balance_msg, 0, None).await;
         assert!(initial_balance_result.is_ok(), "Balance query should succeed");
-        let initial_balance = initial_balance_result.unwrap().return_value();
+        let initial_balance = initial_balance_result.unwrap().return_value;
 
         // Test 5: Verify participation - this should trigger cross-contract call to mint rewards
-        let verify_msg = build_message::<grid_service::GridServiceRef>(
+        let verify_msg = build_message::<GridServiceRef>(
             grid_account.clone()
         ).call(|grid| grid.verify_participation(event_id, ink_e2e::alice().account_id(), 75u64));
         
@@ -121,13 +128,13 @@ mod tests {
         assert!(verify_result.unwrap().return_value().is_ok(), "Verification should complete successfully");
 
         // Test 6: Check that tokens were actually minted and distributed (cross-contract state change)
-        let final_balance_msg = build_message::<powergrid_token::PowergridTokenRef>(
+        let final_balance_msg = build_message::<PowergridTokenRef>(
             token_account.clone()
         ).call(|token| token.balance_of(ink_e2e::alice().account_id()));
         
-        let final_balance_result = client.call_dry_run(&ink_e2e::alice(), &final_balance_msg, 0, None).await;
+        let final_balance_result = client.bare_call_dry_run(&ink_e2e::alice(), &final_balance_msg, 0, None).await;
         assert!(final_balance_result.is_ok(), "Final balance query should succeed");
-        let final_balance = final_balance_result.unwrap().return_value();
+        let final_balance = final_balance_result.unwrap().return_value;
 
         // Verify actual cross-contract state change occurred
         let expected_reward = 750u128 * 75u64 as u128; // compensation_rate * energy_contributed
@@ -147,12 +154,12 @@ mod tests {
     #[ink_e2e::test]
     async fn test_cross_contract_device_verification(mut client: ink_e2e::Client<C, E>) -> E2EResult<()>
     where
-        C: ink_e2e::ContractsBackend,
+        C: ContractsBackend,
         E: ink_e2e::Environment,
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
         // Deploy contracts
-        let token_constructor = powergrid_token::PowergridTokenRef::new(
+        let token_constructor = PowergridTokenRef::new(
             1_000_000_000_000_000_000_000u128,
             "PowerGrid Token".to_string(),
             "PGT".to_string(),
@@ -162,7 +169,7 @@ mod tests {
             .instantiate("powergrid_token", &ink_e2e::alice(), token_constructor, 0, None)
             .await?.account_id;
 
-        let registry_constructor = resource_registry::ResourceRegistryRef::new(
+        let registry_constructor = ResourceRegistryRef::new(
             token_account,
             1_000_000_000_000_000_000u128,
         );
@@ -170,7 +177,7 @@ mod tests {
             .instantiate("resource_registry", &ink_e2e::alice(), registry_constructor, 0, None)
             .await?.account_id;
 
-        let grid_constructor = grid_service::GridServiceRef::new(
+        let grid_constructor = GridServiceRef::new(
             token_account,
             registry_account,
         );
@@ -180,7 +187,7 @@ mod tests {
 
         // Test 1: Register device
         let device_metadata = DeviceMetadata {
-            device_type: DeviceType::SmartMeter,
+            device_type: DeviceType::SolarPanel,
             capacity_watts: 5000,
             location: "Industrial Zone".into(),
             manufacturer: "GridTech Inc".into(),
@@ -189,7 +196,7 @@ mod tests {
             installation_date: 1640995200000,
         };
         
-        let register_msg = build_message::<resource_registry::ResourceRegistryRef>(
+        let register_msg = build_message::<ResourceRegistryRef>(
             registry_account.clone()
         ).call(|registry| registry.register_device(device_metadata, 2_000_000_000_000_000_000u128));
         
@@ -197,16 +204,16 @@ mod tests {
         let device_id = register_result.return_value().unwrap();
 
         // Test 2: Check initial device status (should be unverified)
-        let status_msg = build_message::<resource_registry::ResourceRegistryRef>(
+        let status_msg = build_message::<ResourceRegistryRef>(
             registry_account.clone()
         ).call(|registry| registry.get_device_status(device_id));
         
-        let initial_status_result = client.call_dry_run(&ink_e2e::alice(), &status_msg, 0, None).await?;
-        let initial_status = initial_status_result.return_value().unwrap();
+        let initial_status_result = client.bare_call_dry_run(&ink_e2e::alice(), &status_msg, 0, None).await?;
+        let initial_status = initial_status_result.return_value.unwrap();
         assert!(!initial_status.verified, "Device should start unverified");
 
         // Test 3: Verify device (admin action) - actual state change
-        let verify_msg = build_message::<resource_registry::ResourceRegistryRef>(
+        let verify_msg = build_message::<ResourceRegistryRef>(
             registry_account.clone()
         ).call(|registry| registry.verify_device(device_id));
         
@@ -214,12 +221,12 @@ mod tests {
         assert!(verify_result.return_value().is_ok(), "Device verification should succeed");
 
         // Test 4: Check that verification status actually changed
-        let final_status_result = client.call_dry_run(&ink_e2e::alice(), &status_msg, 0, None).await?;
-        let final_status = final_status_result.return_value().unwrap();
+        let final_status_result = client.bare_call_dry_run(&ink_e2e::alice(), &status_msg, 0, None).await?;
+        let final_status = final_status_result.return_value.unwrap();
         assert!(final_status.verified, "Device should now be verified");
 
         // Test 5: Verify device can now participate in grid events (cross-contract functionality)
-        let create_event_msg = build_message::<grid_service::GridServiceRef>(
+        let create_event_msg = build_message::<GridServiceRef>(
             grid_account.clone()
         ).call(|grid| grid.create_grid_event(
             GridEventType::LoadBalancing,
@@ -244,12 +251,12 @@ mod tests {
     #[ink_e2e::test]
     async fn test_governance_execution_affects_contracts(mut client: ink_e2e::Client<C, E>) -> E2EResult<()>
     where
-        C: ink_e2e::ContractsBackend,
+        C: ContractsBackend,
         E: ink_e2e::Environment,
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
         // Deploy all contracts
-        let token_constructor = powergrid_token::PowergridTokenRef::new(
+        let token_constructor = PowergridTokenRef::new(
             1_000_000_000_000_000_000_000u128,
             "PowerGrid Token".to_string(),
             "PGT".to_string(),
@@ -259,7 +266,7 @@ mod tests {
             .instantiate("powergrid_token", &ink_e2e::alice(), token_constructor, 0, None)
             .await?.account_id;
 
-        let registry_constructor = resource_registry::ResourceRegistryRef::new(
+        let registry_constructor = ResourceRegistryRef::new(
             token_account,
             1_000_000_000_000_000_000u128, // 1 token minimum stake initially
         );
@@ -267,7 +274,7 @@ mod tests {
             .instantiate("resource_registry", &ink_e2e::alice(), registry_constructor, 0, None)
             .await?.account_id;
 
-        let governance_constructor = governance::GovernanceRef::new(
+        let governance_constructor = GovernanceRef::new(
             token_account,
             1_000_000_000_000_000_000u128, // 1 token minimum for proposals
             7 * 24 * 60 * 60 * 1000u64,   // 7 days voting period
@@ -277,12 +284,12 @@ mod tests {
             .await?.account_id;
 
         // Test 1: Check initial minimum stake in resource registry
-        let initial_min_stake_msg = build_message::<resource_registry::ResourceRegistryRef>(
+        let initial_min_stake_msg = build_message::<ResourceRegistryRef>(
             registry_account.clone()
         ).call(|registry| registry.get_min_stake());
         
-        let initial_min_stake_result = client.call_dry_run(&ink_e2e::alice(), &initial_min_stake_msg, 0, None).await?;
-        let initial_min_stake = initial_min_stake_result.return_value();
+        let initial_min_stake_result = client.bare_call_dry_run(&ink_e2e::alice(), &initial_min_stake_msg, 0, None).await?;
+        let initial_min_stake = initial_min_stake_result.return_value;
         assert_eq!(initial_min_stake, 1_000_000_000_000_000_000u128, "Initial min stake should be 1 token");
 
         // Test 2: Create governance proposal to update minimum stake
@@ -290,7 +297,7 @@ mod tests {
         let proposal_type = ProposalType::UpdateMinStake(new_min_stake);
         let description = "Increase minimum stake for better network security".to_string();
         
-        let create_proposal_msg = build_message::<governance::GovernanceRef>(
+        let create_proposal_msg = build_message::<GovernanceRef>(
             governance_account.clone()
         ).call(|gov| gov.create_proposal(proposal_type, description));
         
@@ -299,7 +306,7 @@ mod tests {
         let proposal_id = proposal_result.return_value().unwrap();
 
         // Test 3: Vote on the proposal
-        let vote_msg = build_message::<governance::GovernanceRef>(
+        let vote_msg = build_message::<GovernanceRef>(
             governance_account.clone()
         ).call(|gov| gov.vote(proposal_id, true)); // Vote yes
         
@@ -307,24 +314,24 @@ mod tests {
         assert!(vote_result.return_value().is_ok(), "Voting should succeed");
 
         // Test 4: Execute the proposal (in a real scenario, you'd wait for voting period to end)
-        let execute_msg = build_message::<governance::GovernanceRef>(
+        let execute_msg = build_message::<GovernanceRef>(
             governance_account.clone()
         ).call(|gov| gov.execute_proposal(proposal_id));
         
         let execute_result = client.call(&ink_e2e::alice(), execute_msg, 0, None).await?;
         
         // Test 5: Check if governance actually affected the resource registry
-        let final_min_stake_result = client.call_dry_run(&ink_e2e::alice(), &initial_min_stake_msg, 0, None).await?;
-        let final_min_stake = final_min_stake_result.return_value();
+        let final_min_stake_result = client.bare_call_dry_run(&ink_e2e::alice(), &initial_min_stake_msg, 0, None).await?;
+        let final_min_stake = final_min_stake_result.return_value;
 
         // The actual cross-contract effect depends on implementation
         // Here we verify that the governance system at least tracks the proposal
-        let proposal_status_msg = build_message::<governance::GovernanceRef>(
+        let proposal_status_msg = build_message::<GovernanceRef>(
             governance_account.clone()
         ).call(|gov| gov.get_proposal_details(proposal_id));
         
-        let proposal_status_result = client.call_dry_run(&ink_e2e::alice(), &proposal_status_msg, 0, None).await?;
-        let proposal_details = proposal_status_result.return_value().unwrap();
+        let proposal_status_result = client.bare_call_dry_run(&ink_e2e::alice(), &proposal_status_msg, 0, None).await?;
+        let proposal_details = proposal_status_result.return_value.unwrap();
         
         assert!(proposal_details.yes_votes > 0, "Proposal should have received votes");
         

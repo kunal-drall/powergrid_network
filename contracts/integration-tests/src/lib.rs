@@ -6,6 +6,10 @@
 //! actual e2e contract deployment tests (for production verification)
 //! as requested by sacha-l's review.
 
+// Working E2E tests with correct ink! 5.1.1 API
+#[cfg(all(test, feature = "e2e-tests"))]
+mod working_e2e_tests;
+
 // Legacy simulation tests for development
 #[cfg(test)]
 mod simulation_tests {
@@ -393,8 +397,7 @@ mod simulation_tests {
 }
 
 // Actual e2e tests with deployed contracts (addresses sacha-l's review)
-#[cfg(all(test, feature = "e2e-tests"))]
-mod real_e2e_tests;
+// Old real_e2e_tests.rs has been replaced with working_e2e_tests.rs using correct ink! 5.1.1 API
 
 /// Integration test helpers
 #[cfg(test)]
