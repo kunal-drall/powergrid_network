@@ -276,8 +276,8 @@ main() {
     
     echo ""
     
-    # Deploy Grid Service with min_stake parameter
-    if deploy_contract "grid_service" "new" "1000000000000000000" "Grid Service" grid_address; then
+    # Deploy Grid Service with token and registry addresses 
+    if deploy_contract "grid_service" "new" "$token_address $registry_address" "Grid Service" grid_address; then
         echo "✅ Grid Service deployment completed"
     else
         echo "❌ Grid Service deployment failed"
@@ -286,8 +286,8 @@ main() {
     
     echo ""
     
-    # Deploy Governance with voting_period and quorum_percentage
-    if deploy_contract "governance" "new" "86400 50" "Governance" governance_address; then
+    # Deploy Governance with all required addresses and parameters
+    if deploy_contract "governance" "new" "$token_address $registry_address $grid_address 1000000000000000000 86400 50" "Governance" governance_address; then
         echo "✅ Governance deployment completed"
     else
         echo "❌ Governance deployment failed"
