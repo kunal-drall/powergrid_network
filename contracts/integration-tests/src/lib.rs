@@ -6,9 +6,9 @@
 //! actual e2e contract deployment tests (for production verification)
 //! as requested by sacha-l's review.
 
-// Working E2E tests with correct ink! 5.1.1 API
+// E2E tests with correct ink! 5.1.1 API
 #[cfg(all(test, feature = "e2e-tests"))]
-mod working_e2e_tests;
+mod real_e2e_tests;
 
 // Legacy simulation tests for development
 #[cfg(test)]
