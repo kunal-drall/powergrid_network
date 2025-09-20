@@ -38,6 +38,14 @@ pub mod powergrid_token {
         admin: AccountId,
         paused: bool,
         minters: ink::storage::Mapping<AccountId, ()>,
+        /// Transfer limits for enhanced security
+        max_transfer_amount: Balance,
+        /// Daily transfer tracking for rate limiting
+        daily_transfers: ink::storage::Mapping<AccountId, (Balance, u64)>, // (amount, day)
+        /// Daily transfer limit per account
+        daily_transfer_limit: Balance,
+        /// Emergency freeze for individual accounts
+        frozen_accounts: ink::storage::Mapping<AccountId, bool>,
     }
 
     /// PSP22 error
@@ -69,6 +77,10 @@ pub mod powergrid_token {
                 admin: caller,
                 paused: false,
                 minters: ink::storage::Mapping::default(),
+                max_transfer_amount: Balance::MAX, // No limit by default
+                daily_transfers: ink::storage::Mapping::default(),
+                daily_transfer_limit: Balance::MAX, // No limit by default
+                frozen_accounts: ink::storage::Mapping::default(),
             };
             instance.balances.insert(caller, &initial_supply);
             instance.minters.insert(caller, &());
@@ -126,6 +138,15 @@ pub mod powergrid_token {
                 return Err(PSP22Error::Custom("Paused".into()));
             }
             
+            // Check if accounts are frozen
+            if self.frozen_accounts.get(*from).unwrap_or(false) {
+                return Err(PSP22Error::Custom("Sender account frozen".into()));
+            }
+            
+            if self.frozen_accounts.get(*to).unwrap_or(false) {
+                return Err(PSP22Error::Custom("Recipient account frozen".into()));
+            }
+            
             // Validate addresses
             if from == to {
                 return Err(PSP22Error::Custom("Cannot transfer to self".into()));
@@ -133,6 +154,25 @@ pub mod powergrid_token {
             
             if value == 0 {
                 return Err(PSP22Error::Custom("Transfer amount must be positive".into()));
+            }
+            
+            // Check transfer limits
+            if value > self.max_transfer_amount {
+                return Err(PSP22Error::Custom("Transfer amount exceeds limit".into()));
+            }
+            
+            // Check daily transfer limits
+            let current_day = self.env().block_timestamp() / (24 * 60 * 60 * 1000); // milliseconds to days
+            let (daily_amount, day) = self.daily_transfers.get(*from).unwrap_or((0, 0));
+            
+            let new_daily_amount = if day == current_day {
+                daily_amount.saturating_add(value)
+            } else {
+                value // New day, reset counter
+            };
+            
+            if new_daily_amount > self.daily_transfer_limit {
+                return Err(PSP22Error::Custom("Daily transfer limit exceeded".into()));
             }
             
             let from_balance = self.balance_of(*from);
@@ -147,8 +187,12 @@ pub mod powergrid_token {
                 return Err(PSP22Error::Custom("Recipient balance overflow".into()));
             }
             
+            // Update balances
             self.balances.insert(*from, &from_balance.saturating_sub(value));
             self.balances.insert(*to, &to_balance.saturating_add(value));
+            
+            // Update daily transfer tracking
+            self.daily_transfers.insert(*from, &(new_daily_amount, current_day));
             
             Ok(())
         }
@@ -236,6 +280,49 @@ pub mod powergrid_token {
             self.balances.insert(caller, &current_balance.saturating_sub(amount));
             self.total_supply = self.total_supply.saturating_sub(amount);
             Ok(())
+        }
+
+        /// Set transfer limits (admin only)
+        #[ink(message)]
+        pub fn set_transfer_limits(&mut self, max_transfer: Balance, daily_limit: Balance) -> Result<()> {
+            if Self::env().caller() != self.admin { 
+                return Err(PSP22Error::Custom(String::from("NotAdmin"))); 
+            }
+            self.max_transfer_amount = max_transfer;
+            self.daily_transfer_limit = daily_limit;
+            Ok(())
+        }
+
+        /// Freeze account (admin only)
+        #[ink(message)]
+        pub fn freeze_account(&mut self, account: AccountId) -> Result<()> {
+            if Self::env().caller() != self.admin { 
+                return Err(PSP22Error::Custom(String::from("NotAdmin"))); 
+            }
+            self.frozen_accounts.insert(account, &true);
+            Ok(())
+        }
+
+        /// Unfreeze account (admin only)
+        #[ink(message)]
+        pub fn unfreeze_account(&mut self, account: AccountId) -> Result<()> {
+            if Self::env().caller() != self.admin { 
+                return Err(PSP22Error::Custom(String::from("NotAdmin"))); 
+            }
+            self.frozen_accounts.remove(account);
+            Ok(())
+        }
+
+        /// Check if account is frozen
+        #[ink(message)]
+        pub fn is_account_frozen(&self, account: AccountId) -> bool {
+            self.frozen_accounts.get(account).unwrap_or(false)
+        }
+
+        /// Get transfer limits
+        #[ink(message)]
+        pub fn get_transfer_limits(&self) -> (Balance, Balance) {
+            (self.max_transfer_amount, self.daily_transfer_limit)
         }
     }
 

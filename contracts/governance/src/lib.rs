@@ -15,6 +15,8 @@ pub mod governance {
     pub struct Governance {
         /// Simple reentrancy flag
         entered: bool,
+        /// Emergency pause flag
+        paused: bool,
         /// Contract owner
         owner: AccountId,
         /// Token contract for voting power
@@ -40,6 +42,12 @@ pub mod governance {
     timelock_seconds: u64,
     /// Queue timestamps for proposals (proposal_id -> queued_at timestamp)
     queue_times: Mapping<u64, u64>,
+    /// Emergency guardians who can pause the contract
+    emergency_guardians: Mapping<AccountId, bool>,
+    /// Failed proposal execution attempts tracking
+    execution_failures: Mapping<u64, u32>,
+    /// Maximum execution attempts before proposal is marked as failed
+    max_execution_attempts: u32,
     }
 
     /// Events emitted by the contract
@@ -94,6 +102,16 @@ pub mod governance {
         timestamp: u64,
     }
 
+    #[ink(event)]
+    pub struct EmergencyAction {
+        #[ink(topic)]
+        action_type: String,
+        #[ink(topic)]
+        actor: AccountId,
+        reason: String,
+        timestamp: u64,
+    }
+
     /// Errors
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
@@ -111,6 +129,7 @@ pub mod governance {
         ExecutionFailed = 9,
         NotQueued = 10,
         TimelockNotElapsed = 11,
+        ContractPaused = 12,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
@@ -126,9 +145,14 @@ pub mod governance {
             voting_duration_blocks: u64,
             quorum_percentage: u32,
         ) -> Self {
+            let caller = Self::env().caller();
+            let mut emergency_guardians = Mapping::default();
+            emergency_guardians.insert(caller, &true); // Owner is initial guardian
+            
             Self {
                 entered: false,
-                owner: Self::env().caller(),
+                paused: false,
+                owner: caller,
                 token_address,
                 registry_address,
                 grid_service_address,
@@ -140,6 +164,9 @@ pub mod governance {
                 quorum_percentage,
                 timelock_seconds: 0,
                 queue_times: Mapping::default(),
+                emergency_guardians,
+                execution_failures: Mapping::default(),
+                max_execution_attempts: 3,
             }
         }
 
@@ -150,6 +177,10 @@ pub mod governance {
             proposal_type: ProposalType,
             description: String,
         ) -> Result<u64> {
+            if self.paused {
+                return Err(Error::Unauthorized);
+            }
+            
             let caller = self.env().caller();
             
             // Enhanced input validation
@@ -229,6 +260,10 @@ pub mod governance {
 
         /// Internal vote implementation with proper error handling
         fn _vote_internal(&mut self, proposal_id: u64, support: bool, reason: String) -> Result<()> {
+            if self.paused {
+                return Err(Error::Unauthorized);
+            }
+            
             let caller = self.env().caller();
             let caller_bytes = ink_account_to_bytes(caller);
 
@@ -333,6 +368,10 @@ pub mod governance {
 
         /// Internal proposal execution with enhanced security
         fn _execute_proposal_internal(&mut self, proposal_id: u64) -> Result<()> {
+            if self.paused {
+                return Err(Error::Unauthorized);
+            }
+            
             let mut proposal = self.proposals.get(proposal_id)
                 .ok_or(Error::ProposalNotFound)?;
 
@@ -345,6 +384,12 @@ pub mod governance {
             // Check if already executed
             if proposal.executed { 
                 return Err(Error::ProposalAlreadyExecuted); 
+            }
+
+            // Check execution attempt limits
+            let attempts = self.execution_failures.get(proposal_id).unwrap_or(0);
+            if attempts >= self.max_execution_attempts {
+                return Err(Error::ExecutionFailed);
             }
 
             // Check quorum with overflow protection
@@ -376,12 +421,19 @@ pub mod governance {
             let mut success = passed;
             if passed {
                 success = self._execute_proposal_effects(&proposal.proposal_type);
+                
+                // Track failed execution attempts
+                if !success {
+                    self.execution_failures.insert(proposal_id, &(attempts.saturating_add(1)));
+                }
             }
 
             // Mark executed only on success; if failed, keep it active for potential retry/fix
             if passed && success { 
                 proposal.executed = true; 
                 proposal.active = false; 
+                // Clear execution failure tracking on success
+                self.execution_failures.remove(proposal_id);
             }
             if passed && !success { 
                 proposal.active = true; 
@@ -481,6 +533,73 @@ pub mod governance {
         #[ink(message)]
         pub fn get_governance_params(&self) -> (Balance, u64, u32) {
             (self.min_voting_power, self.voting_duration_blocks, self.quorum_percentage)
+        }
+
+        /// Emergency pause function (guardians only)
+        #[ink(message)]
+        pub fn emergency_pause(&mut self, reason: String) -> Result<()> {
+            let caller = self.env().caller();
+            if !self.emergency_guardians.get(caller).unwrap_or(false) && caller != self.owner {
+                self.env().emit_event(SecurityViolationDetected {
+                    violation_type: "Unauthorized emergency action".into(),
+                    account: caller,
+                    timestamp: self.env().block_timestamp(),
+                });
+                return Err(Error::Unauthorized);
+            }
+
+            self.paused = true;
+            self.env().emit_event(EmergencyAction {
+                action_type: "Emergency Pause".into(),
+                actor: caller,
+                reason,
+                timestamp: self.env().block_timestamp(),
+            });
+            Ok(())
+        }
+
+        /// Emergency unpause function (owner only)
+        #[ink(message)]
+        pub fn emergency_unpause(&mut self, reason: String) -> Result<()> {
+            let caller = self.env().caller();
+            if caller != self.owner {
+                return Err(Error::Unauthorized);
+            }
+
+            self.paused = false;
+            self.env().emit_event(EmergencyAction {
+                action_type: "Emergency Unpause".into(),
+                actor: caller,
+                reason,
+                timestamp: self.env().block_timestamp(),
+            });
+            Ok(())
+        }
+
+        /// Add emergency guardian (owner only)
+        #[ink(message)]
+        pub fn add_emergency_guardian(&mut self, guardian: AccountId) -> Result<()> {
+            if self.env().caller() != self.owner {
+                return Err(Error::Unauthorized);
+            }
+            self.emergency_guardians.insert(guardian, &true);
+            Ok(())
+        }
+
+        /// Remove emergency guardian (owner only)
+        #[ink(message)]
+        pub fn remove_emergency_guardian(&mut self, guardian: AccountId) -> Result<()> {
+            if self.env().caller() != self.owner {
+                return Err(Error::Unauthorized);
+            }
+            self.emergency_guardians.remove(guardian);
+            Ok(())
+        }
+
+        /// Check if account is emergency guardian
+        #[ink(message)]
+        pub fn is_emergency_guardian(&self, account: AccountId) -> bool {
+            self.emergency_guardians.get(account).unwrap_or(false)
         }
 
         /// Get voting power from PSP22 token balance
