@@ -23,6 +23,7 @@ This repository contains the complete implementation of PowerGrid Network's core
 ## 📋 **Table of Contents**
 
 - [🚀 Quick Start](#-quick-start)
+- [🐳 Docker Setup](#-docker-setup)
 - [🔧 Setup](#-setup)
 - [🗜️ Architecture](#️-architecture)
 - [📖 Smart Contracts](#-smart-contracts)
@@ -70,7 +71,72 @@ substrate-contracts-node --dev
 ./scripts/deploy-local.sh
 ```
 
+### **🐳 Docker Quick Start**
+
+For cross-platform development and testing:
+
+```bash
+# Build and run everything with Docker Compose
+docker-compose up
+
+# Or build manually
+docker build -t powergrid-network .
+docker run -p 9944:9944 powergrid-network substrate-contracts-node --dev --rpc-external --ws-external
+```
+
+See [DOCKER.md](DOCKER.md) for complete Docker documentation.
+
 The script will deploy all contracts and save their addresses to `deployment/local-addresses.json`.
+
+---
+
+## 🐳 **Docker Setup**
+
+PowerGrid Network includes complete Docker support for cross-platform development and testing.
+
+### **Quick Docker Start**
+```bash
+# Clone the repository
+git clone https://github.com/kunal-drall/powergrid_network.git
+cd powergrid_network
+
+# Build and run with Docker Compose (recommended)
+docker-compose up
+```
+
+This will:
+- Build the Docker image with Rust toolchain and cargo-contract v5.0.1
+- Start substrate-contracts-node in development mode
+- Build all smart contracts
+- Deploy contracts and run E2E tests
+- Save deployment addresses to `deployment/local-addresses.json`
+
+### **Manual Docker Usage**
+```bash
+# Build the image
+docker build -t powergrid-network .
+
+# Run substrate-contracts-node
+docker run -p 9944:9944 powergrid-network substrate-contracts-node --dev --rpc-external --ws-external
+
+# Run E2E tests (in another terminal)
+docker run --network host powergrid-network ./scripts/deploy-and-run-e2e-docker.sh
+```
+
+### **Docker Components**
+- **Dockerfile**: Multi-stage build with Rust toolchain and substrate-contracts-node
+- **docker-compose.yml**: Orchestrates node and runner services
+- **docker-entrypoint.sh**: Handles runtime setup and initialization
+- **scripts/deploy-and-run-e2e-docker.sh**: Docker-compatible E2E test script
+
+### **Benefits of Docker Setup**
+- ✅ **Cross-platform compatibility** - Works on Linux, macOS, Windows
+- ✅ **Isolated environment** - No local Rust installation required
+- ✅ **Consistent builds** - Same environment for all developers
+- ✅ **CI/CD ready** - Easy integration with automated pipelines
+- ✅ **Quick setup** - Single command deployment
+
+See [DOCKER.md](DOCKER.md) for complete Docker documentation, troubleshooting, and advanced usage.
 
 ---
 

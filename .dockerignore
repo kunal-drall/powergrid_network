@@ -25,14 +25,9 @@ substrate-node.log
 tmp/
 temp/
 
-# Docker
-Dockerfile*
-docker-compose*
-.dockerignore
-
-# Documentation that's not needed for build
-*.md
-!README.md
-
 # Local deployment data
 deployment/local-addresses.json
+
+# Test files (keep documentation)
+test-docker.sh
+simulate-docker-e2e.sh
