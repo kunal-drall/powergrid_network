@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Substrate contracts node service
+  substrate-node:
+    build: .
+    command: substrate-contracts-node --dev --tmp --rpc-cors all --rpc-methods=unsafe --rpc-external --ws-external
+    ports:
+      - "9944:9944"  # WebSocket RPC port
+      - "9933:9933"  # HTTP RPC port
+    networks:
+      - powergrid-network
+    healthcheck:
+      test: ["CMD", "curl", "-H", "Content-Type: application/json", "-d", "{\"id\":1, \"jsonrpc\":\"2.0\", \"method\": \"system_health\", \"params\":[]}", "http://localhost:9944"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Runner container for E2E tests
+  e2e-runner:
+    build: .
+    depends_on:
+      substrate-node:
+        condition: service_healthy
+    command: ./scripts/deploy-and-run-e2e-docker.sh
+    networks:
+      - powergrid-network
+    environment:
+      - NODE_URL=ws://substrate-node:9944
+      - DOCKER_CONTAINER=1
+    volumes:
+      - ./deployment:/workspace/deployment
+
+networks:
+  powergrid-network:
+    driver: bridge
+
+volumes:
+  deployment-data:
