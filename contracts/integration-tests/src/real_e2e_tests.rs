@@ -271,10 +271,21 @@ mod tests {
             .instantiate("resource_registry", &ink_e2e::alice(), registry_constructor, 0, None)
             .await?.account_id;
 
+        let grid_constructor = GridServiceRef::new(
+            token_account,
+            registry_account,
+        );
+        let grid_account = client
+            .instantiate("grid_service", &ink_e2e::alice(), grid_constructor, 0, None)
+            .await?.account_id;
+
         let governance_constructor = GovernanceRef::new(
             token_account,
+            registry_account,
+            grid_account,
             1_000_000_000_000_000_000u128, // 1 token minimum for proposals
             7 * 24 * 60 * 60 * 1000u64,   // 7 days voting period
+            50u32, // 50% quorum
         );
         let governance_account = client
             .instantiate("governance", &ink_e2e::alice(), governance_constructor, 0, None)
