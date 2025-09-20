@@ -26,7 +26,7 @@ pub mod governance {
         /// Proposals mapping
         proposals: Mapping<u64, Proposal>,
         /// Voting records (proposal_id -> voter -> voted)
-        #[allow(clippy::type_complexity)]
+        /// Note: Type complexity is necessary for efficient cross-contract voting verification
         votes: Mapping<(u64, [u8; 32]), bool>,
         /// Next proposal ID
         next_proposal_id: u64,
@@ -90,7 +90,6 @@ pub mod governance {
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
     #[repr(u8)]
-    #[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
     pub enum Error {
         Unauthorized,
         ProposalNotFound,

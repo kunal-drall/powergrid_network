@@ -49,8 +49,8 @@ fi
 
 # Install cargo-contract if not present
 if ! command -v cargo-contract &> /dev/null; then
-    echo "Installing cargo-contract v5.0.1..."
-    cargo install --force --locked cargo-contract --version 5.0.1
+    echo "Installing cargo-contract v5.0.3..."
+    cargo install --force --locked cargo-contract --version 5.0.3
 fi
 
 echo "Setup complete!"
