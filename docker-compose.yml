@@ -23,11 +23,12 @@ services:
     depends_on:
       substrate-node:
         condition: service_healthy
-    command: ./scripts/deploy-and-run-e2e.sh
+    command: ./scripts/deploy-and-run-e2e-docker.sh
     networks:
       - powergrid-network
     environment:
       - NODE_URL=ws://substrate-node:9944
+      - DOCKER_CONTAINER=1
     volumes:
       - ./deployment:/workspace/deployment
 
