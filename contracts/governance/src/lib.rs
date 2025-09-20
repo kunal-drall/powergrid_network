@@ -89,6 +89,8 @@ pub mod governance {
     /// Errors
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
+    #[repr(u8)]
+    #[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
     pub enum Error {
         Unauthorized,
         ProposalNotFound,
@@ -410,7 +412,7 @@ pub mod governance {
                 let token = PowergridTokenRef::from_account_id(self.token_address);
                 let bal: u128 = token.balance_of(account);
                 // Downcast safely; governance uses u64 voting units
-                bal.min(u128::from(u64::MAX)) as u64
+                u64::try_from(bal.min(u128::from(u64::MAX))).unwrap_or(u64::MAX)
             }
             #[cfg(test)]
             {
@@ -426,7 +428,7 @@ pub mod governance {
             {
                 let token = PowergridTokenRef::from_account_id(self.token_address);
                 let total: u128 = token.total_supply();
-                total.min(u128::from(u64::MAX)) as u64
+                u64::try_from(total.min(u128::from(u64::MAX))).unwrap_or(u64::MAX)
             }
             #[cfg(test)]
             {

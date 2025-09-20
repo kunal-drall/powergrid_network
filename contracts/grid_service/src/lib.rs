@@ -677,7 +677,11 @@ pub mod grid_service {
                     Some(load_times_100) => {
                         match load_times_100.checked_div(capacity_mw) {
                             Some(percentage) => {
-                                if percentage > 100 { 100u8 } else { percentage as u8 }
+                                if percentage > 100 { 
+                                    100u8 
+                                } else { 
+                                    u8::try_from(percentage).unwrap_or(100u8)
+                                }
                             },
                             None => 0u8,
                         }
