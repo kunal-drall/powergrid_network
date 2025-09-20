@@ -1,0 +1,38 @@
+# Git
+.git/
+.gitignore
+
+# Build artifacts
+target/
+artifacts/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+substrate-node.log
+
+# Temporary files
+tmp/
+temp/
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Documentation that's not needed for build
+*.md
+!README.md
+
+# Local deployment data
+deployment/local-addresses.json
