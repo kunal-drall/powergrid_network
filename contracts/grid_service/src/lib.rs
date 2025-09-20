@@ -234,6 +234,15 @@ pub mod grid_service {
                 return Err("Unauthorized caller".into());
             }
 
+            // Enhanced input validation
+            if duration_minutes == 0 || duration_minutes > 1440 { // Max 24 hours
+                return Err("Invalid duration".into());
+            }
+            
+            if target_reduction_kw == 0 {
+                return Err("Target reduction must be positive".into());
+            }
+
             self.create_grid_event_internal(event_type, duration_minutes, compensation_rate, target_reduction_kw)
         }
 
@@ -282,18 +291,36 @@ pub mod grid_service {
         pub fn participate_in_event(&mut self, event_id: u64, energy_reduction_wh: u64) -> Result<(), String> {
             if self.entered { return Err("Reentrancy".into()); }
             self.entered = true;
-            if self.paused { self.entered = false; return Err("Paused".into()); }
+            
+            let result = self._participate_in_event_internal(event_id, energy_reduction_wh);
+            self.entered = false;
+            result
+        }
+
+        /// Internal participation implementation with enhanced validation
+        fn _participate_in_event_internal(&mut self, event_id: u64, energy_reduction_wh: u64) -> Result<(), String> {
+            if self.paused { return Err("Paused".into()); }
+            
             let caller = self.env().caller();
             let caller_bytes = ink_account_to_bytes(caller);
+            
+            // Validate input parameters
+            if energy_reduction_wh == 0 {
+                return Err("Energy reduction must be positive".into());
+            }
             
             // Verify event exists and is active
             let mut event = self.events.get(event_id)
                 .ok_or("Event not found")?;
             
-            if !event.active { self.entered = false; return Err("Event is not active".into()); }
+            if !event.active { 
+                return Err("Event is not active".into()); 
+            }
 
             let now = self.env().block_timestamp();
-            if now > event.end_time { self.entered = false; return Err("Event has ended".into()); }
+            if now > event.end_time { 
+                return Err("Event has ended".into()); 
+            }
 
             // Verify device is registered and active in registry (skipped in unit tests)
             #[cfg(not(test))]
@@ -301,6 +328,19 @@ pub mod grid_service {
                 let registry = ResourceRegistryRef::from_account_id(self.registry_address);
                 if !registry.is_device_registered(caller) {
                     return Err("Device not registered in registry".into());
+                }
+                
+                // Check if device is active
+                if let Some(false) = registry.is_device_active(caller) {
+                    return Err("Device is not active".into());
+                }
+            }
+
+            // Check for duplicate participation
+            let participations = self.participations.get(event_id).unwrap_or_default();
+            for participation in &participations {
+                if participation.participant == caller_bytes {
+                    return Err("Already participating in this event".into());
                 }
             }
 
@@ -316,9 +356,9 @@ pub mod grid_service {
             };
 
             // Add to participations
-            let mut participations = self.participations.get(event_id).unwrap_or_default();
-            participations.push(participation);
-            self.participations.insert(event_id, &participations);
+            let mut updated_participations = participations;
+            updated_participations.push(participation);
+            self.participations.insert(event_id, &updated_participations);
 
             // Update event stats
             event.total_participants = event.total_participants.saturating_add(1);
@@ -330,7 +370,7 @@ pub mod grid_service {
                 participant: caller,
                 energy_contributed_wh: energy_reduction_wh,
             });
-            self.entered = false;
+            
             Ok(())
         }
 
@@ -344,7 +384,21 @@ pub mod grid_service {
         ) -> Result<(), String> {
             if self.entered { return Err("Reentrancy".into()); }
             self.entered = true;
-            if self.paused { self.entered = false; return Err("Paused".into()); }
+            
+            let result = self._verify_participation_internal(event_id, participant, actual_reduction);
+            self.entered = false;
+            result
+        }
+
+        /// Internal participation verification with comprehensive security checks
+        fn _verify_participation_internal(
+            &mut self,
+            event_id: u64,
+            participant: AccountId,
+            actual_reduction: u64,
+        ) -> Result<(), String> {
+            if self.paused { return Err("Paused".into()); }
+            
             if self.ensure_authorized().is_err() {
                 return Err("Unauthorized caller".into());
             }
@@ -358,35 +412,33 @@ pub mod grid_service {
 
             // Find and update the participation
             let mut found = false;
+            let mut reward_earned = 0u128;
+            
             for participation in participations.iter_mut() {
                 if participation.participant == participant_bytes {
-                    // Prevent double payout
+                    // Prevent double verification and payout
                     if participation.verified && participation.paid {
-                        return Err("AlreadyVerifiedAndPaid".into());
+                        return Err("Already verified and paid".into());
                     }
+                    
                     participation.energy_contributed_wh = actual_reduction;
                     participation.participation_end = self.env().block_timestamp();
                     participation.verified = true;
                     
                     // Calculate reward (includes flexibility scoring)
-                    participation.reward_earned = self.calculate_reward(&event, actual_reduction, participant);
+                    reward_earned = self.calculate_reward(&event, actual_reduction, participant);
+                    participation.reward_earned = reward_earned;
                     
                     found = true;
                     break;
                 }
             }
 
-            if !found { return Err("Participation not found".into()); }
+            if !found { 
+                return Err("Participation not found".into()); 
+            }
 
-            self.participations.insert(event_id, &participations);
-
-            // Find the updated participation for the reward amount
-            let mut reward_earned = participations.iter()
-                .find(|p| p.participant == participant_bytes)
-                .map(|p| p.reward_earned)
-                .unwrap_or(0);
-            
-            // Reputation-based multiplier (80% - 120%) applied to reward; only when not testing
+            // Apply reputation-based multiplier (80% - 120%) to reward; only when not testing
             #[cfg(not(test))]
             {
                 let registry = ResourceRegistryRef::from_account_id(self.registry_address);
@@ -397,22 +449,41 @@ pub mod grid_service {
                     reward_earned = reward_earned
                         .saturating_mul(multiplier_bp)
                         .saturating_div(10_000);
+                    
+                    // Update the participation with final reward
+                    for participation in participations.iter_mut() {
+                        if participation.participant == participant_bytes {
+                            participation.reward_earned = reward_earned;
+                            break;
+                        }
+                    }
                 }
             }
 
-        // Interact with token to mint rewards and update registry (skipped in unit tests)
+            // Store updated participations
+            self.participations.insert(event_id, &participations);
+
+            // Interact with token to mint rewards and update registry (skipped in unit tests)
             #[cfg(not(test))]
             {
                 if reward_earned > 0 {
                     let mut token = PowergridTokenRef::from_account_id(self.token_address);
                     // Minting will succeed only if this contract is a minter; assume governance sets it
-                    let _ = token.mint(participant, reward_earned);
-            self.env().emit_event(RewardPaid { event_id, participant, amount: reward_earned });
-                    // Mark paid
-                    if let Some(p) = participations.iter_mut().find(|p| p.participant == participant_bytes) {
-                        p.paid = true;
+                    if token.mint(participant, reward_earned).is_ok() {
+                        self.env().emit_event(RewardPaid { event_id, participant, amount: reward_earned });
+                        
+                        // Mark as paid
+                        let mut updated_participations = self.participations.get(event_id).unwrap_or_default();
+                        for participation in updated_participations.iter_mut() {
+                            if participation.participant == participant_bytes {
+                                participation.paid = true;
+                                break;
+                            }
+                        }
+                        self.participations.insert(event_id, &updated_participations);
+                    } else {
+                        return Err("Failed to mint rewards".into());
                     }
-                    self.participations.insert(event_id, &participations);
                 }
 
                 let mut registry = ResourceRegistryRef::from_account_id(self.registry_address);
@@ -425,7 +496,7 @@ pub mod grid_service {
                 reward_earned,
                 verified: true,
             });
-            self.entered = false;
+            
             Ok(())
         }
 
@@ -662,6 +733,23 @@ pub mod grid_service {
                 return Err("Unauthorized data feed".into());
             }
 
+            // Enhanced input validation
+            if capacity_mw == 0 {
+                return Err("Capacity must be positive".into());
+            }
+            
+            if frequency_hz < 4500 || frequency_hz > 6500 { // Valid range: 45-65 Hz
+                return Err("Invalid frequency".into());
+            }
+            
+            if voltage_kv == 0 || voltage_kv > 1000 { // Reasonable voltage range
+                return Err("Invalid voltage".into());
+            }
+            
+            if renewable_percentage > 100 {
+                return Err("Invalid renewable percentage".into());
+            }
+
             let timestamp = self.env().block_timestamp();
             let condition = GridCondition {
                 timestamp,
@@ -672,6 +760,7 @@ pub mod grid_service {
                 renewable_percentage,
             };
 
+            // Safe percentage calculation with overflow protection
             let load_percentage = if capacity_mw > 0 {
                 match load_mw.checked_mul(100) {
                     Some(load_times_100) => {

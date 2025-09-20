@@ -86,6 +86,14 @@ pub mod governance {
         new_seconds: u64,
     }
 
+    #[ink(event)]
+    pub struct SecurityViolationDetected {
+        #[ink(topic)]
+        violation_type: String,
+        account: AccountId,
+        timestamp: u64,
+    }
+
     /// Errors
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
@@ -143,6 +151,32 @@ pub mod governance {
             description: String,
         ) -> Result<u64> {
             let caller = self.env().caller();
+            
+            // Enhanced input validation
+            if description.is_empty() || description.len() > 1000 {
+                return Err(Error::InvalidDuration); // Reusing error for validation
+            }
+            
+            // Validate proposal type parameters
+            match &proposal_type {
+                ProposalType::UpdateMinStake(amount) => {
+                    if *amount == 0 {
+                        return Err(Error::InvalidDuration);
+                    }
+                }
+                ProposalType::UpdateReputationThreshold(threshold) => {
+                    if *threshold > 100 {
+                        return Err(Error::InvalidDuration);
+                    }
+                }
+                ProposalType::TreasurySpend(_, amount) => {
+                    if *amount == 0 {
+                        return Err(Error::InvalidDuration);
+                    }
+                }
+                _ => {} // Other types are valid by construction
+            }
+            
             let caller_bytes = ink_account_to_bytes(caller);
 
             // Check voting power from PSP22 balance
@@ -185,9 +219,16 @@ pub mod governance {
         /// Vote on a proposal
         #[ink(message)]
         pub fn vote(&mut self, proposal_id: u64, support: bool, reason: String) -> Result<()> {
-            if self.entered { self.entered = false; return Err(Error::Unauthorized); }
+            if self.entered { return Err(Error::Unauthorized); }
             self.entered = true;
             
+            let result = self._vote_internal(proposal_id, support, reason);
+            self.entered = false;
+            result
+        }
+
+        /// Internal vote implementation with proper error handling
+        fn _vote_internal(&mut self, proposal_id: u64, support: bool, reason: String) -> Result<()> {
             let caller = self.env().caller();
             let caller_bytes = ink_account_to_bytes(caller);
 
@@ -197,20 +238,17 @@ pub mod governance {
             // Check if proposal is still active
             let current_block = self.env().block_number();
             if (current_block as u64) > proposal.voting_end { 
-                self.entered = false;
                 return Err(Error::ProposalExpired); 
             }
 
             // Check if already voted
             if self.votes.contains((proposal_id, caller_bytes)) { 
-                self.entered = false;
                 return Err(Error::AlreadyVoted); 
             }
 
             // Get voting power (simplified)
             let voting_power = self.get_voting_power(caller);
             if voting_power == 0 { 
-                self.entered = false;
                 return Err(Error::InsufficientVotingPower); 
             }
 
@@ -235,26 +273,30 @@ pub mod governance {
                 reason,
             });
             
-            self.entered = false;
             Ok(())
         }
 
         /// Queue a proposal for execution after voting period; starts the timelock countdown
         #[ink(message)]
         pub fn queue_proposal(&mut self, proposal_id: u64) -> Result<()> {
-            if self.entered { self.entered = false; return Err(Error::Unauthorized); }
+            if self.entered { return Err(Error::Unauthorized); }
             self.entered = true;
 
+            let result = self._queue_proposal_internal(proposal_id);
+            self.entered = false;
+            result
+        }
+
+        /// Internal queue proposal implementation
+        fn _queue_proposal_internal(&mut self, proposal_id: u64) -> Result<()> {
             let proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 
             // Only after voting ends and not executed
             let current_block = self.env().block_number();
             if (current_block as u64) <= proposal.voting_end { 
-                self.entered = false;
                 return Err(Error::ProposalNotExpired); 
             }
             if proposal.executed { 
-                self.entered = false;
                 return Err(Error::ProposalAlreadyExecuted); 
             }
 
@@ -265,7 +307,6 @@ pub mod governance {
             let execute_after = now.saturating_add(self.timelock_seconds.saturating_mul(1000));
             self.env().emit_event(ProposalQueued { proposal_id, queued_at: now, execute_after });
             
-            self.entered = false;
             Ok(())
         }
 
@@ -282,28 +323,39 @@ pub mod governance {
         /// Execute a proposal
         #[ink(message)]
         pub fn execute_proposal(&mut self, proposal_id: u64) -> Result<()> {
-            if self.entered { self.entered = false; return Err(Error::Unauthorized); }
+            if self.entered { return Err(Error::Unauthorized); }
             self.entered = true;
             
+            let result = self._execute_proposal_internal(proposal_id);
+            self.entered = false;
+            result
+        }
+
+        /// Internal proposal execution with enhanced security
+        fn _execute_proposal_internal(&mut self, proposal_id: u64) -> Result<()> {
             let mut proposal = self.proposals.get(proposal_id)
                 .ok_or(Error::ProposalNotFound)?;
 
             // Check if proposal has expired
             let current_block = self.env().block_number();
             if (current_block as u64) <= proposal.voting_end { 
-                self.entered = false;
                 return Err(Error::ProposalNotExpired); 
             }
 
             // Check if already executed
             if proposal.executed { 
-                self.entered = false;
                 return Err(Error::ProposalAlreadyExecuted); 
             }
 
-            // Check quorum
+            // Check quorum with overflow protection
             let total_supply = self.get_total_voting_power();
-            let quorum_required = total_supply.saturating_mul(self.quorum_percentage as u64).saturating_div(100);
+            if total_supply == 0 {
+                return Err(Error::InvalidQuorum);
+            }
+            
+            let quorum_required = total_supply
+                .saturating_mul(self.quorum_percentage as u64)
+                .saturating_div(100);
             
             let passed = proposal.yes_votes > proposal.no_votes && proposal.total_voting_power >= quorum_required;
             
@@ -311,69 +363,29 @@ pub mod governance {
             if passed {
                 let queued_at = self.queue_times.get(proposal_id).unwrap_or(0);
                 if queued_at == 0 { 
-                    self.entered = false;
                     return Err(Error::NotQueued); 
                 }
                 let now = self.env().block_timestamp();
                 let execute_after = queued_at.saturating_add(self.timelock_seconds.saturating_mul(1000));
                 if now < execute_after { 
-                    self.entered = false;
                     return Err(Error::TimelockNotElapsed); 
                 }
             }
             
-            // If passed, attempt to execute side effects
+            // If passed, attempt to execute side effects with enhanced error handling
             let mut success = passed;
             if passed {
-                #[cfg(not(test))]
-                {
-                    match proposal.proposal_type.clone() {
-                        ProposalType::UpdateMinStake(new_min) => {
-                            let mut registry = ResourceRegistryRef::from_account_id(self.registry_address);
-                            if registry.update_min_stake(new_min).is_err() { success = false; }
-                        }
-                        ProposalType::UpdateCompensationRate(new_rate) => {
-                            let mut grid = GridServiceRef::from_account_id(self.grid_service_address);
-                            if grid.update_default_compensation_rate(new_rate).is_err() { success = false; }
-                        }
-                        ProposalType::UpdateReputationThreshold(threshold) => {
-                            let mut registry = ResourceRegistryRef::from_account_id(self.registry_address);
-                            if registry.update_reputation_threshold(threshold).is_err() { success = false; }
-                        }
-                        ProposalType::TreasurySpend(to_bytes, amount) => {
-                            let to = ink::primitives::AccountId::from(to_bytes);
-                            // Use token transfer from this contract's balance
-                            let mut token = PowergridTokenRef::from_account_id(self.token_address);
-                            if token.transfer(to, amount, Vec::new()).is_err() { success = false; }
-                        }
-                        ProposalType::SetTokenMinter(account_bytes, is_minter) => {
-                            let account = ink::primitives::AccountId::from(account_bytes);
-                            let mut token = PowergridTokenRef::from_account_id(self.token_address);
-                            let r = if is_minter { token.add_minter(account) } else { token.remove_minter(account) };
-                            if r.is_err() { success = false; }
-                        }
-                        ProposalType::SetRegistryAuthorizedCaller(account_bytes, is_auth) => {
-                            let account = ink::primitives::AccountId::from(account_bytes);
-                            let mut registry = ResourceRegistryRef::from_account_id(self.registry_address);
-                            let r = if is_auth { registry.add_authorized_caller(account) } else { registry.remove_authorized_caller(account) };
-                            if r.is_err() { success = false; }
-                        }
-                        ProposalType::SetGridAuthorizedCaller(account_bytes, is_auth) => {
-                            let account = ink::primitives::AccountId::from(account_bytes);
-                            let mut grid = GridServiceRef::from_account_id(self.grid_service_address);
-                            let r = if is_auth { grid.add_authorized_caller(account) } else { grid.remove_authorized_caller(account) };
-                            if r.is_err() { success = false; }
-                        }
-                        ProposalType::SystemUpgrade | ProposalType::Other(_) => {
-                            success = true;
-                        }
-                    }
-                }
+                success = self._execute_proposal_effects(&proposal.proposal_type);
             }
 
             // Mark executed only on success; if failed, keep it active for potential retry/fix
-            if passed && success { proposal.executed = true; proposal.active = false; }
-            if passed && !success { proposal.active = true; }
+            if passed && success { 
+                proposal.executed = true; 
+                proposal.active = false; 
+            }
+            if passed && !success { 
+                proposal.active = true; 
+            }
             self.proposals.insert(proposal_id, &proposal);
 
             self.env().emit_event(ProposalExecuted {
@@ -381,8 +393,75 @@ pub mod governance {
                 successful: success,
             });
             
-            self.entered = false;
             Ok(())
+        }
+
+        /// Execute proposal effects with comprehensive error handling
+        fn _execute_proposal_effects(&self, proposal_type: &ProposalType) -> bool {
+            #[cfg(not(test))]
+            {
+                match proposal_type.clone() {
+                    ProposalType::UpdateMinStake(new_min) => {
+                        if new_min == 0 { return false; } // Validate non-zero minimum stake
+                        let mut registry = ResourceRegistryRef::from_account_id(self.registry_address);
+                        registry.update_min_stake(new_min).is_ok()
+                    }
+                    ProposalType::UpdateCompensationRate(new_rate) => {
+                        let mut grid = GridServiceRef::from_account_id(self.grid_service_address);
+                        grid.update_default_compensation_rate(new_rate).is_ok()
+                    }
+                    ProposalType::UpdateReputationThreshold(threshold) => {
+                        if threshold > 100 { return false; } // Validate threshold range
+                        let mut registry = ResourceRegistryRef::from_account_id(self.registry_address);
+                        registry.update_reputation_threshold(threshold).is_ok()
+                    }
+                    ProposalType::TreasurySpend(to_bytes, amount) => {
+                        if amount == 0 { return false; } // Validate non-zero amount
+                        let to = ink::primitives::AccountId::from(to_bytes);
+                        // Use token transfer from this contract's balance
+                        let mut token = PowergridTokenRef::from_account_id(self.token_address);
+                        token.transfer(to, amount, Vec::new()).is_ok()
+                    }
+                    ProposalType::SetTokenMinter(account_bytes, is_minter) => {
+                        let account = ink::primitives::AccountId::from(account_bytes);
+                        let mut token = PowergridTokenRef::from_account_id(self.token_address);
+                        let result = if is_minter { 
+                            token.add_minter(account) 
+                        } else { 
+                            token.remove_minter(account) 
+                        };
+                        result.is_ok()
+                    }
+                    ProposalType::SetRegistryAuthorizedCaller(account_bytes, is_auth) => {
+                        let account = ink::primitives::AccountId::from(account_bytes);
+                        let mut registry = ResourceRegistryRef::from_account_id(self.registry_address);
+                        let result = if is_auth { 
+                            registry.add_authorized_caller(account) 
+                        } else { 
+                            registry.remove_authorized_caller(account) 
+                        };
+                        result.is_ok()
+                    }
+                    ProposalType::SetGridAuthorizedCaller(account_bytes, is_auth) => {
+                        let account = ink::primitives::AccountId::from(account_bytes);
+                        let mut grid = GridServiceRef::from_account_id(self.grid_service_address);
+                        let result = if is_auth { 
+                            grid.add_authorized_caller(account) 
+                        } else { 
+                            grid.remove_authorized_caller(account) 
+                        };
+                        result.is_ok()
+                    }
+                    ProposalType::SystemUpgrade | ProposalType::Other(_) => {
+                        true // These are informational proposals
+                    }
+                }
+            }
+            #[cfg(test)]
+            {
+                let _ = proposal_type; // Suppress unused warning in tests
+                true
+            }
         }
 
         /// Get proposal details

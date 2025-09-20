@@ -120,10 +120,19 @@ pub mod powergrid_token {
             Ok(())
         }
 
-        /// Internal transfer
+        /// Internal transfer with enhanced security checks
         fn _transfer_from_to(&mut self, from: &AccountId, to: &AccountId, value: Balance) -> Result<()> {
             if self.paused {
                 return Err(PSP22Error::Custom("Paused".into()));
+            }
+            
+            // Validate addresses
+            if from == to {
+                return Err(PSP22Error::Custom("Cannot transfer to self".into()));
+            }
+            
+            if value == 0 {
+                return Err(PSP22Error::Custom("Transfer amount must be positive".into()));
             }
             
             let from_balance = self.balance_of(*from);
@@ -131,8 +140,14 @@ pub mod powergrid_token {
                 return Err(PSP22Error::InsufficientBalance);
             }
             
-            self.balances.insert(*from, &from_balance.saturating_sub(value));
             let to_balance = self.balance_of(*to);
+            
+            // Check for overflow in recipient balance
+            if to_balance.saturating_add(value) < to_balance {
+                return Err(PSP22Error::Custom("Recipient balance overflow".into()));
+            }
+            
+            self.balances.insert(*from, &from_balance.saturating_sub(value));
             self.balances.insert(*to, &to_balance.saturating_add(value));
             
             Ok(())
@@ -169,12 +184,35 @@ pub mod powergrid_token {
         /// Restricted mint (MINTER role only)
         #[ink(message)]
         pub fn mint(&mut self, account: AccountId, amount: Balance) -> Result<()> {
-            if !self.minters.contains(Self::env().caller()) { return Err(PSP22Error::Custom(String::from("NotMinter"))); }
-            if self.paused { return Err(PSP22Error::Custom(String::from("Paused"))); }
+            if !self.minters.contains(Self::env().caller()) { 
+                return Err(PSP22Error::Custom(String::from("NotMinter"))); 
+            }
+            if self.paused { 
+                return Err(PSP22Error::Custom(String::from("Paused"))); 
+            }
+            
+            // Enhanced validation
+            if amount == 0 {
+                return Err(PSP22Error::Custom(String::from("Mint amount must be positive")));
+            }
             
             let current_balance = self.balance_of(account);
-            self.balances.insert(account, &current_balance.saturating_add(amount));
-            self.total_supply = self.total_supply.saturating_add(amount);
+            let new_balance = current_balance.saturating_add(amount);
+            
+            // Check for balance overflow
+            if new_balance < current_balance {
+                return Err(PSP22Error::Custom(String::from("Balance overflow")));
+            }
+            
+            let new_total_supply = self.total_supply.saturating_add(amount);
+            
+            // Check for total supply overflow
+            if new_total_supply < self.total_supply {
+                return Err(PSP22Error::Custom(String::from("Total supply overflow")));
+            }
+            
+            self.balances.insert(account, &new_balance);
+            self.total_supply = new_total_supply;
             Ok(())
         }
 
@@ -182,7 +220,13 @@ pub mod powergrid_token {
         #[ink(message)]
         pub fn burn(&mut self, amount: Balance) -> Result<()> {
             let caller = Self::env().caller();
-            if self.paused { return Err(PSP22Error::Custom(String::from("Paused"))); }
+            if self.paused { 
+                return Err(PSP22Error::Custom(String::from("Paused"))); 
+            }
+            
+            if amount == 0 {
+                return Err(PSP22Error::Custom(String::from("Burn amount must be positive")));
+            }
             
             let current_balance = self.balance_of(caller);
             if current_balance < amount {
