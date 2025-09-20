@@ -43,6 +43,8 @@ pub mod powergrid_token {
     /// PSP22 error
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
+    #[repr(u8)]
+    #[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
     pub enum PSP22Error {
         Custom(String),
         InsufficientBalance,

@@ -1,4 +1,3 @@
-// Temporarily removed #![allow(clippy::cast_possible_truncation)] to see errors
 use ink::prelude::string::String;
 use scale::{Decode, Encode};
 use scale_info::TypeInfo;
@@ -22,6 +21,8 @@ pub fn bytes_to_ink_account(bytes: [u8; 32]) -> ink::primitives::AccountId {
 
 #[derive(Decode, Encode, Clone, TypeInfo, PartialEq, Debug)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
+#[repr(u8)]
+#[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
 pub enum DeviceType {
     SmartPlug,
     EV,
@@ -61,6 +62,8 @@ pub struct Device {
 
 #[derive(Decode, Encode, Clone, TypeInfo, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
+#[repr(u8)]
+#[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
 pub enum GridEventType {
     DemandResponse,
     FrequencyRegulation,
@@ -113,6 +116,8 @@ pub struct Participation {
 
 #[derive(Decode, Encode, Clone, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
+#[repr(u8)]
+#[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
 pub enum ProposalType {
     UpdateMinStake(Balance),
     UpdateCompensationRate(Balance),
