@@ -90,20 +90,19 @@ pub mod governance {
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
     #[repr(u8)]
-    #[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
     pub enum Error {
-        Unauthorized,
-        ProposalNotFound,
-        ProposalExpired,
-        ProposalNotExpired,
-        AlreadyVoted,
-        InsufficientVotingPower,
-        ProposalAlreadyExecuted,
-        InvalidQuorum,
-        InvalidDuration,
-        ExecutionFailed,
-        NotQueued,
-        TimelockNotElapsed,
+        Unauthorized = 0,
+        ProposalNotFound = 1,
+        ProposalExpired = 2,
+        ProposalNotExpired = 3,
+        AlreadyVoted = 4,
+        InsufficientVotingPower = 5,
+        ProposalAlreadyExecuted = 6,
+        InvalidQuorum = 7,
+        InvalidDuration = 8,
+        ExecutionFailed = 9,
+        NotQueued = 10,
+        TimelockNotElapsed = 11,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;

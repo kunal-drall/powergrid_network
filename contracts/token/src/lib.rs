@@ -44,14 +44,13 @@ pub mod powergrid_token {
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
     #[repr(u8)]
-    #[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
     pub enum PSP22Error {
-        Custom(String),
-        InsufficientBalance,
-        InsufficientAllowance,
-        ZeroRecipientAddress,
-        ZeroSenderAddress,
-        SafeTransferCheckFailed(String),
+        Custom(String) = 0,
+        InsufficientBalance = 1,
+        InsufficientAllowance = 2,
+        ZeroRecipientAddress = 3,
+        ZeroSenderAddress = 4,
+        SafeTransferCheckFailed(String) = 5,
     }
 
     pub type Result<T> = core::result::Result<T, PSP22Error>;

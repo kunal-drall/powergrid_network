@@ -22,15 +22,14 @@ pub fn bytes_to_ink_account(bytes: [u8; 32]) -> ink::primitives::AccountId {
 #[derive(Decode, Encode, Clone, TypeInfo, PartialEq, Debug)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
 #[repr(u8)]
-#[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
 pub enum DeviceType {
-    SmartPlug,
-    EV,
-    WaterHeater,
-    AirConditioner,
-    SolarPanel,
-    Battery,
-    Other(String),
+    SmartPlug = 0,
+    EV = 1,
+    WaterHeater = 2,
+    AirConditioner = 3,
+    SolarPanel = 4,
+    Battery = 5,
+    Other(String) = 6,
 }
 
 #[derive(Decode, Encode, Clone, TypeInfo, Debug)]
@@ -63,13 +62,12 @@ pub struct Device {
 #[derive(Decode, Encode, Clone, TypeInfo, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
 #[repr(u8)]
-#[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
 pub enum GridEventType {
-    DemandResponse,
-    FrequencyRegulation,
-    PeakShaving,
-    LoadBalancing,
-    Emergency,
+    DemandResponse = 0,
+    FrequencyRegulation = 1,
+    PeakShaving = 2,
+    LoadBalancing = 3,
+    Emergency = 4,
 }
 
 #[derive(Decode, Encode, Clone, TypeInfo, Debug)]
@@ -117,18 +115,17 @@ pub struct Participation {
 #[derive(Decode, Encode, Clone, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
 #[repr(u8)]
-#[allow(clippy::cast_possible_truncation)] // Enum discriminant casting handled by SCALE codec
 pub enum ProposalType {
-    UpdateMinStake(Balance),
-    UpdateCompensationRate(Balance),
-    UpdateReputationThreshold(u32),
-    TreasurySpend([u8; 32], Balance),
-    SystemUpgrade,
-    Other(String),
+    UpdateMinStake(Balance) = 0,
+    UpdateCompensationRate(Balance) = 1,
+    UpdateReputationThreshold(u32) = 2,
+    TreasurySpend([u8; 32], Balance) = 3,
+    SystemUpgrade = 4,
+    Other(String) = 5,
     /// Governance role management
-    SetTokenMinter([u8; 32], bool),
-    SetRegistryAuthorizedCaller([u8; 32], bool),
-    SetGridAuthorizedCaller([u8; 32], bool),
+    SetTokenMinter([u8; 32], bool) = 6,
+    SetRegistryAuthorizedCaller([u8; 32], bool) = 7,
+    SetGridAuthorizedCaller([u8; 32], bool) = 8,
 }
 
 #[derive(Decode, Encode, Clone, TypeInfo, Debug)]
