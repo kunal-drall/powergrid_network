@@ -42,7 +42,7 @@ This repository contains the complete implementation of PowerGrid Network's core
 
 ### **Prerequisites**
 - Rust 1.85+ and Cargo
-- cargo-contract v6.0.0+
+- cargo-contract v5.0.3+
 - Substrate Contracts Node (for local testing)
 
 ### **1. Clone and Setup**
@@ -105,7 +105,7 @@ docker-compose up
 ```
 
 This will:
-- Build the Docker image with Rust toolchain and cargo-contract v5.0.1
+- Build the Docker image with Rust toolchain and cargo-contract v5.0.3
 - Start substrate-contracts-node in development mode
 - Build all smart contracts
 - Deploy contracts and run E2E tests

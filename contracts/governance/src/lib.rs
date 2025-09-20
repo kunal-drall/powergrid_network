@@ -26,7 +26,7 @@ pub mod governance {
         /// Proposals mapping
         proposals: Mapping<u64, Proposal>,
         /// Voting records (proposal_id -> voter -> voted)
-        #[allow(clippy::type_complexity)]
+        /// Note: Type complexity is necessary for efficient cross-contract voting verification
         votes: Mapping<(u64, [u8; 32]), bool>,
         /// Next proposal ID
         next_proposal_id: u64,
