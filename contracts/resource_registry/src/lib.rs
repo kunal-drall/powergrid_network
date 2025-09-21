@@ -108,17 +108,32 @@ pub mod resource_registry {
         pub fn register_device(&mut self, metadata: DeviceMetadata) -> Result<(), String> {
             if self.entered { return Err("Reentrancy".into()); }
             self.entered = true;
-            if self.paused { self.entered = false; return Err("Paused".into()); }
+            
+            let result = self._register_device_internal(metadata);
+            self.entered = false;
+            result
+        }
+
+        /// Internal device registration with enhanced validation
+        fn _register_device_internal(&mut self, metadata: DeviceMetadata) -> Result<(), String> {
+            if self.paused { return Err("Paused".into()); }
+            
             let caller = self.env().caller();
             let caller_bytes = ink_account_to_bytes(caller);
             let stake: Balance = self.env().transferred_value();
             
+            // Enhanced validation
             if stake < self.min_stake {
                 return Err("Insufficient stake amount".into());
             }
             
             if self.devices.contains(caller_bytes) {
                 return Err("Device already registered".into());
+            }
+
+            // Validate metadata
+            if metadata.capacity_watts == 0 {
+                return Err("Invalid device capacity".into());
             }
 
             let now = self.env().block_timestamp();
@@ -143,7 +158,7 @@ pub mod resource_registry {
                 stake,
                 reputation: device.reputation,
             });
-            self.entered = false;
+            
             Ok(())
         }
 
@@ -152,10 +167,23 @@ pub mod resource_registry {
         pub fn increase_stake(&mut self) -> Result<(), String> {
             if self.entered { return Err("Reentrancy".into()); }
             self.entered = true;
-            if self.paused { self.entered = false; return Err("Paused".into()); }
+            
+            let result = self._increase_stake_internal();
+            self.entered = false;
+            result
+        }
+
+        /// Internal stake increase implementation
+        fn _increase_stake_internal(&mut self) -> Result<(), String> {
+            if self.paused { return Err("Paused".into()); }
+            
             let caller = self.env().caller();
             let caller_bytes = ink_account_to_bytes(caller);
             let additional_stake: Balance = self.env().transferred_value();
+            
+            if additional_stake == 0 {
+                return Err("Must transfer positive amount".into());
+            }
             
             let mut device = self.devices.get(caller_bytes)
                 .ok_or("Device not registered")?;
@@ -168,7 +196,7 @@ pub mod resource_registry {
                 additional_stake,
                 total_stake: device.stake,
             });
-            self.entered = false;
+            
             Ok(())
         }
 
@@ -394,19 +422,48 @@ pub mod resource_registry {
         pub fn withdraw_stake(&mut self, amount: Balance) -> Result<(), String> {
             if self.entered { return Err("Reentrancy".into()); }
             self.entered = true;
-            if self.paused { self.entered = false; return Err("Paused".into()); }
+            
+            let result = self._withdraw_stake_internal(amount);
+            self.entered = false;
+            result
+        }
+
+        /// Internal stake withdrawal with enhanced security
+        fn _withdraw_stake_internal(&mut self, amount: Balance) -> Result<(), String> {
+            if self.paused { return Err("Paused".into()); }
+            
             let caller = self.env().caller();
             let caller_bytes = ink_account_to_bytes(caller);
-            let mut device = self.devices.get(caller_bytes).ok_or("Device not registered")?;
-            if amount == 0 { return Ok(()); }
-            if amount > device.stake { return Err("AmountExceedsStake".into()); }
+            
+            if amount == 0 { 
+                return Err("Amount must be positive".into()); 
+            }
+            
+            let mut device = self.devices.get(caller_bytes)
+                .ok_or("Device not registered")?;
+            
+            if amount > device.stake { 
+                return Err("Amount exceeds stake".into()); 
+            }
+            
             let remaining = device.stake.saturating_sub(amount);
-            if device.active && remaining < self.min_stake { return Err("BelowMinStake".into()); }
+            if device.active && remaining < self.min_stake { 
+                return Err("Cannot withdraw below minimum stake while active".into()); 
+            }
+            
             device.stake = remaining;
             self.devices.insert(caller_bytes, &device);
-            self.env().transfer(caller, amount).map_err(|_| String::from("TransferFailed"))?;
-            self.env().emit_event(StakeWithdrawn { account: caller, amount, remaining_stake: remaining });
-            self.entered = false;
+            
+            // Perform transfer with error handling
+            self.env().transfer(caller, amount)
+                .map_err(|_| String::from("Transfer failed"))?;
+            
+            self.env().emit_event(StakeWithdrawn { 
+                account: caller, 
+                amount, 
+                remaining_stake: remaining 
+            });
+            
             Ok(())
         }
 
@@ -415,16 +472,48 @@ pub mod resource_registry {
         pub fn slash_stake(&mut self, account: AccountId, amount: Balance, reason: String) -> Result<(), String> {
             if self.entered { return Err("Reentrancy".into()); }
             self.entered = true;
+            
+            let result = self._slash_stake_internal(account, amount, reason);
+            self.entered = false;
+            result
+        }
+
+        /// Internal stake slashing with authorization checks
+        fn _slash_stake_internal(&mut self, account: AccountId, amount: Balance, reason: String) -> Result<(), String> {
             let sender = self.env().caller();
-            if Some(sender) != self.owner && Some(sender) != self.governance_address { return Err("Unauthorized".into()); }
+            if Some(sender) != self.owner && Some(sender) != self.governance_address { 
+                return Err("Unauthorized".into()); 
+            }
+            
+            if amount == 0 {
+                return Err("Slash amount must be positive".into());
+            }
+            
+            if reason.is_empty() {
+                return Err("Slash reason required".into());
+            }
+            
             let acc_bytes = ink_account_to_bytes(account);
-            let mut device = self.devices.get(acc_bytes).ok_or("Device not registered")?;
+            let mut device = self.devices.get(acc_bytes)
+                .ok_or("Device not registered")?;
+            
             let slash_amt = core::cmp::min(amount, device.stake);
             device.stake = device.stake.saturating_sub(slash_amt);
-            if device.stake < self.min_stake { device.active = false; }
+            
+            // Auto-deactivate if below minimum stake
+            if device.stake < self.min_stake { 
+                device.active = false; 
+            }
+            
             self.devices.insert(acc_bytes, &device);
-            self.env().emit_event(StakeSlashed { account, amount: slash_amt, remaining_stake: device.stake, reason });
-            self.entered = false;
+            
+            self.env().emit_event(StakeSlashed { 
+                account, 
+                amount: slash_amt, 
+                remaining_stake: device.stake, 
+                reason 
+            });
+            
             Ok(())
         }
 

@@ -27,12 +27,12 @@ mod tests {
         E: ink_e2e::Environment,
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
-        // Deploy token contract
+        // Deploy token contract with correct constructor order (name, symbol, decimals, initial_supply)
         let token_constructor = PowergridTokenRef::new(
-            1_000_000_000_000_000_000_000u128, // 1000 tokens initial supply
             "PowerGrid Token".to_string(),
             "PGT".to_string(),
             18u8,
+            1_000_000_000_000_000_000_000u128, // 1000 tokens initial supply
         );
         
         let token_result = client
@@ -41,9 +41,8 @@ mod tests {
         assert!(token_result.is_ok(), "Token contract deployment should succeed");
         let token_account = token_result.unwrap().account_id;
 
-        // Deploy resource registry
+        // Deploy resource registry with correct constructor (only min_stake parameter)
         let registry_constructor = ResourceRegistryRef::new(
-            token_account,
             1_000_000_000_000_000_000u128, // 1 token minimum stake
         );
         
@@ -53,7 +52,7 @@ mod tests {
         assert!(registry_result.is_ok(), "Registry contract deployment should succeed");
         let registry_account = registry_result.unwrap().account_id;
 
-        // Deploy grid service with cross-contract references
+        // Deploy grid service with correct constructor (token_address, registry_address)
         let grid_constructor = GridServiceRef::new(
             token_account,
             registry_account,
@@ -158,20 +157,19 @@ mod tests {
         E: ink_e2e::Environment,
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
-        // Deploy contracts
+        // Deploy contracts with correct constructor parameters
         let token_constructor = PowergridTokenRef::new(
-            1_000_000_000_000_000_000_000u128,
             "PowerGrid Token".to_string(),
             "PGT".to_string(),
             18u8,
+            1_000_000_000_000_000_000_000u128,
         );
         let token_account = client
             .instantiate("powergrid_token", &ink_e2e::alice(), token_constructor, 0, None)
             .await?.account_id;
 
         let registry_constructor = ResourceRegistryRef::new(
-            token_account,
-            1_000_000_000_000_000_000u128,
+            1_000_000_000_000_000_000u128, // 1 token minimum stake
         );
         let registry_account = client
             .instantiate("resource_registry", &ink_e2e::alice(), registry_constructor, 0, None)
@@ -255,29 +253,39 @@ mod tests {
         E: ink_e2e::Environment,
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
-        // Deploy all contracts
+        // Deploy all contracts with correct constructor parameters
         let token_constructor = PowergridTokenRef::new(
-            1_000_000_000_000_000_000_000u128,
             "PowerGrid Token".to_string(),
             "PGT".to_string(),
             18u8,
+            1_000_000_000_000_000_000_000u128,
         );
         let token_account = client
             .instantiate("powergrid_token", &ink_e2e::alice(), token_constructor, 0, None)
             .await?.account_id;
 
         let registry_constructor = ResourceRegistryRef::new(
-            token_account,
             1_000_000_000_000_000_000u128, // 1 token minimum stake initially
         );
         let registry_account = client
             .instantiate("resource_registry", &ink_e2e::alice(), registry_constructor, 0, None)
             .await?.account_id;
 
+        let grid_constructor = GridServiceRef::new(
+            token_account,
+            registry_account,
+        );
+        let grid_account = client
+            .instantiate("grid_service", &ink_e2e::alice(), grid_constructor, 0, None)
+            .await?.account_id;
+
         let governance_constructor = GovernanceRef::new(
             token_account,
+            registry_account,
+            grid_account,
             1_000_000_000_000_000_000u128, // 1 token minimum for proposals
             7 * 24 * 60 * 60 * 1000u64,   // 7 days voting period
+            50u32, // 50% quorum
         );
         let governance_account = client
             .instantiate("governance", &ink_e2e::alice(), governance_constructor, 0, None)

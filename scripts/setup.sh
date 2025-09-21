@@ -22,9 +22,9 @@ fi
 rustc --version
 cargo --version
 
-# 4. Install correct cargo-contract version (5.0.1)
-echo "--- Installing cargo-contract v5.0.1 ---"
-cargo install --force --locked cargo-contract --version 5.0.1
+# 4. Install correct cargo-contract version (5.0.3+)
+echo "--- Installing cargo-contract v5.0.3 ---"
+cargo install --force --locked cargo-contract --version 5.0.3
 
 # 5. Add wasm target + rust-src
 echo "--- Adding wasm target and rust-src ---"

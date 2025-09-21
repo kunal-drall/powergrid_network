@@ -1,0 +1,33 @@
+# Git
+.git/
+.gitignore
+
+# Build artifacts
+target/
+artifacts/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+substrate-node.log
+
+# Temporary files
+tmp/
+temp/
+
+# Local deployment data
+deployment/local-addresses.json
+
+# Test files (keep documentation)
+test-docker.sh
+simulate-docker-e2e.sh
