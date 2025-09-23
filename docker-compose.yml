@@ -1,45 +1,25 @@
 version: '3.8'
 
 services:
-  # Substrate node for smart contract deployment and testing
   node:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
+    command: substrate-contracts-node --dev --tmp --ws-external --rpc-external --rpc-cors all --unsafe-ws-external --unsafe-rpc-external
     ports:
-      - "9944:9944"
-      - "9933:9933"
-      - "30333:30333"
-    command: >
-      substrate-contracts-node
-      --dev
-      --ws-external
-      --rpc-external
-      --rpc-cors all
-      --unsafe-ws-external
-      --unsafe-rpc-external
-    networks:
-      - powergrid
-
-  # Development and testing environment
-  tester:
-    build:
-      context: .
-      dockerfile: Dockerfile
+      - "9944:9944"  # WS/RPC
+      - "9933:9933"  # HTTP RPC
+      - "30333:30333"  # P2P
     volumes:
-      - .:/app
-    working_dir: /app
+      - .:/app  # Sync code changes
+    restart: unless-stopped  # Keeps running in background
+
+  tester:
+    build: .
     depends_on:
       - node
+    volumes:
+      - .:/app  # Sync code changes
     environment:
-      - NODE_URL=ws://node:9944
-    networks:
-      - powergrid
-
-networks:
-  powergrid:
-    driver: bridge
-
-volumes:
-  cargo_cache:
-    driver: local
+      - CONTRACTS_NODE=ws://node:9944
+    stdin_open: true
+    tty: true
+    command: bash  # Interactive shell for running commands

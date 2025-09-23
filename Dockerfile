@@ -1,41 +1,67 @@
 # PowerGrid Network Docker Container
 # Provides cross-platform development environment for ink! smart contracts
 
-FROM ubuntu:24.04
+# Stage 1: Builder - Install Rust, tools, and build contracts
+FROM rust:1.86-bookworm AS builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    curl \
-    git \
     build-essential \
-    pkg-config \
+    clang \
     libssl-dev \
+    pkg-config \
+    curl \
+    wget \
+    git \
     protobuf-compiler \
+    binaryen \
+    wabt \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust with latest stable
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Install cargo-contract (locked to 5.0.1 for ink! 5.1.1 compatibility)
+RUN cargo install --force --locked cargo-contract --version 5.0.1
 
-# Install ink! contract tools
-RUN cargo install --force --locked \
-    cargo-contract@5.0.3 \
-    substrate-contracts-node@0.42.0
+# Install substrate-contracts-node v0.42.0
+RUN wget https://github.com/paritytech/substrate-contracts-node/releases/download/v0.42.0/substrate-contracts-node-linux.tar.gz && \
+    tar -xzf substrate-contracts-node-linux.tar.gz && \
+    mv substrate-contracts-node-linux/substrate-contracts-node /usr/local/bin/ && \
+    chmod +x /usr/local/bin/substrate-contracts-node && \
+    rm -rf substrate-contracts-node-linux.tar.gz substrate-contracts-node-linux
 
-# Add WebAssembly target
-RUN rustup target add wasm32-unknown-unknown
+# Add WASM target
+RUN rustup target add wasm32-unknown-unknown && \
+    rustup component add rust-src
 
 # Set working directory
 WORKDIR /app
 
 # Copy project files
-COPY . .
+COPY . /app
 
 # Build all contracts
 RUN ./scripts/build-all.sh
 
-# Expose substrate node port
-EXPOSE 9944
+# Stage 2: Runtime - Lightweight image for running node and tests
+FROM debian:bookworm-slim
 
-# Default command
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy substrate-contracts-node from builder
+COPY --from=builder /usr/local/bin/substrate-contracts-node /usr/local/bin/
+
+# Copy built artifacts and scripts from builder
+COPY --from=builder /app /app
+
+# Set working directory
+WORKDIR /app
+
+# Expose ports for node (RPC, WS, P2P)
+EXPOSE 9944 9933 30333
+
+# Default command (interactive shell for tester)
 CMD ["bash"]
