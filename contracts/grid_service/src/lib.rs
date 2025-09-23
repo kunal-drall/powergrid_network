@@ -295,11 +295,11 @@ pub mod grid_service {
             let now = self.env().block_timestamp();
             if now > event.end_time { self.entered = false; return Err("Event has ended".into()); }
 
-            // Verify device is registered and active in registry (skipped in unit tests)
-            #[cfg(not(test))]
+            // Verify device is registered and active in registry
             {
                 let registry = ResourceRegistryRef::from_account_id(self.registry_address);
                 if !registry.is_device_registered(caller) {
+                    self.entered = false;
                     return Err("Device not registered in registry".into());
                 }
             }
@@ -386,8 +386,7 @@ pub mod grid_service {
                 .map(|p| p.reward_earned)
                 .unwrap_or(0);
             
-            // Reputation-based multiplier (80% - 120%) applied to reward; only when not testing
-            #[cfg(not(test))]
+            // Reputation-based multiplier (80% - 120%) applied to reward
             {
                 let registry = ResourceRegistryRef::from_account_id(self.registry_address);
                 if let Some(rep) = registry.get_device_reputation(participant) {
@@ -400,8 +399,7 @@ pub mod grid_service {
                 }
             }
 
-        // Interact with token to mint rewards and update registry (skipped in unit tests)
-            #[cfg(not(test))]
+            // Interact with token to mint rewards and update registry
             {
                 if reward_earned > 0 {
                     let mut token = PowergridTokenRef::from_account_id(self.token_address);

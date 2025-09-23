@@ -38,6 +38,8 @@ pub mod powergrid_token {
         admin: AccountId,
         paused: bool,
         minters: ink::storage::Mapping<AccountId, ()>,
+        /// Simple reentrancy flag
+        entered: bool,
     }
 
     /// PSP22 error
@@ -68,10 +70,20 @@ pub mod powergrid_token {
                 admin: caller,
                 paused: false,
                 minters: ink::storage::Mapping::default(),
+                entered: false,
             };
             instance.balances.insert(caller, &initial_supply);
             instance.minters.insert(caller, &());
             instance
+        }
+
+        /// Reentrancy guard helper
+        fn ensure_not_entered(&mut self) -> Result<()> {
+            if self.entered {
+                return Err(PSP22Error::Custom("Reentrancy".into()));
+            }
+            self.entered = true;
+            Ok(())
         }
 
         /// PSP22 messages
@@ -98,18 +110,22 @@ pub mod powergrid_token {
 
         #[ink(message)]
         pub fn transfer_from(&mut self, from: AccountId, to: AccountId, value: Balance, _data: Vec<u8>) -> Result<()> {
+            self.ensure_not_entered()?;
             let caller = self.env().caller();
             
             // Check allowance if not self-transfer
             if caller != from {
                 let allowance = self.allowance(from, caller);
                 if allowance < value {
+                    self.entered = false;
                     return Err(PSP22Error::InsufficientAllowance);
                 }
                 self.allowances.insert((from, caller), &allowance.saturating_sub(value));
             }
             
-            self._transfer_from_to(&from, &to, value)
+            let result = self._transfer_from_to(&from, &to, value);
+            self.entered = false;
+            result
         }
 
         #[ink(message)]
@@ -168,12 +184,20 @@ pub mod powergrid_token {
         /// Restricted mint (MINTER role only)
         #[ink(message)]
         pub fn mint(&mut self, account: AccountId, amount: Balance) -> Result<()> {
-            if !self.minters.contains(Self::env().caller()) { return Err(PSP22Error::Custom(String::from("NotMinter"))); }
-            if self.paused { return Err(PSP22Error::Custom(String::from("Paused"))); }
+            self.ensure_not_entered()?;
+            if !self.minters.contains(Self::env().caller()) { 
+                self.entered = false;
+                return Err(PSP22Error::Custom(String::from("NotMinter"))); 
+            }
+            if self.paused { 
+                self.entered = false;
+                return Err(PSP22Error::Custom(String::from("Paused"))); 
+            }
             
             let current_balance = self.balance_of(account);
             self.balances.insert(account, &current_balance.saturating_add(amount));
             self.total_supply = self.total_supply.saturating_add(amount);
+            self.entered = false;
             Ok(())
         }
 
