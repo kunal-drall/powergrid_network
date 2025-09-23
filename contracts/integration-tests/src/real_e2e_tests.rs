@@ -29,10 +29,10 @@ mod tests {
     {
         // Deploy token contract
         let token_constructor = PowergridTokenRef::new(
-            1_000_000_000_000_000_000_000u128, // 1000 tokens initial supply
             "PowerGrid Token".to_string(),
-            "PGT".to_string(),
+            "PGT".to_string(), 
             18u8,
+            1_000_000_000_000_000_000_000u128, // 1000 tokens initial supply
         );
         
         let token_result = client
@@ -43,7 +43,6 @@ mod tests {
 
         // Deploy resource registry
         let registry_constructor = ResourceRegistryRef::new(
-            token_account,
             1_000_000_000_000_000_000u128, // 1 token minimum stake
         );
         
@@ -64,6 +63,14 @@ mod tests {
             .await;
         assert!(grid_result.is_ok(), "Grid service deployment should succeed");
         let grid_account = grid_result.unwrap().account_id;
+
+        // CRITICAL: Set GridService as a minter so it can mint rewards
+        let add_minter_msg = build_message::<PowergridTokenRef>(token_account)
+            .call(|token| token.add_minter(grid_account));
+        
+        let minter_result = client.call(&ink_e2e::alice(), add_minter_msg, 0, None).await;
+        assert!(minter_result.is_ok(), "Adding grid service as minter should succeed");
+        assert!(minter_result.unwrap().return_value().is_ok(), "Grid service should be granted minter role");
 
         // Test 1: Register device in resource registry
         let device_metadata = DeviceMetadata {
@@ -127,6 +134,13 @@ mod tests {
         assert!(verify_result.is_ok(), "Participation verification should succeed");
         assert!(verify_result.unwrap().return_value().is_ok(), "Verification should complete successfully");
 
+        // Test 5b: Test grid condition update/event triggering
+        let update_msg = build_message::<GridServiceRef>(grid_account.clone())
+            .call(|grid| grid.update_grid_condition(80, 50)); // Load %, frequency
+        
+        let update_result = client.call(&ink_e2e::alice(), update_msg, 0, None).await;
+        assert!(update_result.is_ok(), "Grid condition update should succeed");
+
         // Test 6: Check that tokens were actually minted and distributed (cross-contract state change)
         let final_balance_msg = build_message::<PowergridTokenRef>(
             token_account.clone()
@@ -160,17 +174,16 @@ mod tests {
     {
         // Deploy contracts
         let token_constructor = PowergridTokenRef::new(
-            1_000_000_000_000_000_000_000u128,
             "PowerGrid Token".to_string(),
-            "PGT".to_string(),
+            "PGT".to_string(), 
             18u8,
+            1_000_000_000_000_000_000_000u128,
         );
         let token_account = client
             .instantiate("powergrid_token", &ink_e2e::alice(), token_constructor, 0, None)
             .await?.account_id;
 
         let registry_constructor = ResourceRegistryRef::new(
-            token_account,
             1_000_000_000_000_000_000u128,
         );
         let registry_account = client
@@ -257,27 +270,37 @@ mod tests {
     {
         // Deploy all contracts
         let token_constructor = PowergridTokenRef::new(
-            1_000_000_000_000_000_000_000u128,
             "PowerGrid Token".to_string(),
-            "PGT".to_string(),
+            "PGT".to_string(), 
             18u8,
+            1_000_000_000_000_000_000_000u128,
         );
         let token_account = client
             .instantiate("powergrid_token", &ink_e2e::alice(), token_constructor, 0, None)
             .await?.account_id;
 
         let registry_constructor = ResourceRegistryRef::new(
-            token_account,
             1_000_000_000_000_000_000u128, // 1 token minimum stake initially
         );
         let registry_account = client
             .instantiate("resource_registry", &ink_e2e::alice(), registry_constructor, 0, None)
             .await?.account_id;
 
+        let grid_constructor = GridServiceRef::new(
+            token_account,
+            registry_account,
+        );
+        let grid_account = client
+            .instantiate("grid_service", &ink_e2e::alice(), grid_constructor, 0, None)
+            .await?.account_id;
+
         let governance_constructor = GovernanceRef::new(
             token_account,
+            registry_account,
+            grid_account,
             1_000_000_000_000_000_000u128, // 1 token minimum for proposals
-            7 * 24 * 60 * 60 * 1000u64,   // 7 days voting period
+            7 * 24 * 60 * 60 * 1000u64,   // 7 days voting period (milliseconds)
+            51u32,                        // 51% quorum
         );
         let governance_account = client
             .instantiate("governance", &ink_e2e::alice(), governance_constructor, 0, None)
