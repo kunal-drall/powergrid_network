@@ -1,13 +1,53 @@
-# 🌟 PowerGrid Network - Decentralized Energy Grid Participation
+# PowerGrid Network
 
-**A complete smart contract system for decentralized energy grid participation, built with ink! v5.1 on Polkadot.**
+A decentralized energy grid management system built with ink! smart contracts on Substrate.
 
-![PowerGrid Network](https://img.shields.io/badge/ink!-v5.1-blue)
-![Tests](https://img.shields.io/badge/tests-14%20passing-green)
-![Build](https://img.shields.io/badge/build-passing-green)
-![License](https://img.shields.io/badge/license-MIT-blue)
+## Overview
 
-## 🎯 **Milestone 1 - Complete Smart Contract Infrastructure**
+PowerGrid Network enables:
+- **Token-based rewards** for grid participants
+- **Device registration** and verification
+- **Grid event management** (demand response, load balancing)
+- **Decentralized governance** for network parameters
+
+## Quick Start with Docker
+
+### Prerequisites
+- Docker and Docker Compose
+- Git
+
+### Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd powergrid_network
+   ```
+
+2. **Build the Docker environment**
+   ```bash
+   docker-compose build
+   ```
+
+3. **Start the substrate node**
+   ```bash
+   docker-compose up -d node
+   ```
+
+4. **Run unit tests**
+   ```bash
+   docker-compose run --rm tester cargo test --workspace
+   ```
+
+5. **Run E2E tests** (requires running node)
+   ```bash
+   docker-compose run --rm tester cargo test --features e2e-tests
+   ```
+
+6. **Deploy contracts**
+   ```bash
+   docker-compose run --rm tester ./scripts/deploy-local.sh
+   ```
 
 This repository contains the complete implementation of PowerGrid Network's core smart contracts, delivering a production-ready decentralized energy grid participation system.
 

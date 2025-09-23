@@ -38,11 +38,13 @@ pub mod powergrid_token {
         admin: AccountId,
         paused: bool,
         minters: ink::storage::Mapping<AccountId, ()>,
+        entered: bool,
     }
 
     /// PSP22 error
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
+    #[allow(clippy::cast_possible_truncation)]
     pub enum PSP22Error {
         Custom(String),
         InsufficientBalance,
@@ -68,10 +70,25 @@ pub mod powergrid_token {
                 admin: caller,
                 paused: false,
                 minters: ink::storage::Mapping::default(),
+                entered: false,
             };
             instance.balances.insert(caller, &initial_supply);
             instance.minters.insert(caller, &());
             instance
+        }
+
+        /// Reentrancy guard
+        fn ensure_not_entered(&mut self) -> Result<()> {
+            if self.entered {
+                return Err(PSP22Error::Custom("Reentrancy".into()));
+            }
+            self.entered = true;
+            Ok(())
+        }
+
+        /// Reset reentrancy guard
+        fn reset_entered(&mut self) {
+            self.entered = false;
         }
 
         /// PSP22 messages
@@ -92,24 +109,31 @@ pub mod powergrid_token {
 
         #[ink(message)]
         pub fn transfer(&mut self, to: AccountId, value: Balance, _data: Vec<u8>) -> Result<()> {
+            self.ensure_not_entered()?;
             let from = self.env().caller();
-            self._transfer_from_to(&from, &to, value)
+            let result = self._transfer_from_to(&from, &to, value);
+            self.reset_entered();
+            result
         }
 
         #[ink(message)]
         pub fn transfer_from(&mut self, from: AccountId, to: AccountId, value: Balance, _data: Vec<u8>) -> Result<()> {
+            self.ensure_not_entered()?;
             let caller = self.env().caller();
             
             // Check allowance if not self-transfer
             if caller != from {
                 let allowance = self.allowance(from, caller);
                 if allowance < value {
+                    self.reset_entered();
                     return Err(PSP22Error::InsufficientAllowance);
                 }
                 self.allowances.insert((from, caller), &allowance.saturating_sub(value));
             }
             
-            self._transfer_from_to(&from, &to, value)
+            let result = self._transfer_from_to(&from, &to, value);
+            self.reset_entered();
+            result
         }
 
         #[ink(message)]
@@ -168,28 +192,42 @@ pub mod powergrid_token {
         /// Restricted mint (MINTER role only)
         #[ink(message)]
         pub fn mint(&mut self, account: AccountId, amount: Balance) -> Result<()> {
-            if !self.minters.contains(Self::env().caller()) { return Err(PSP22Error::Custom(String::from("NotMinter"))); }
-            if self.paused { return Err(PSP22Error::Custom(String::from("Paused"))); }
+            self.ensure_not_entered()?;
+            if !self.minters.contains(Self::env().caller()) { 
+                self.reset_entered();
+                return Err(PSP22Error::Custom(String::from("NotMinter"))); 
+            }
+            if self.paused { 
+                self.reset_entered();
+                return Err(PSP22Error::Custom(String::from("Paused"))); 
+            }
             
             let current_balance = self.balance_of(account);
             self.balances.insert(account, &current_balance.saturating_add(amount));
             self.total_supply = self.total_supply.saturating_add(amount);
+            self.reset_entered();
             Ok(())
         }
 
         /// Burn caller's tokens
         #[ink(message)]
         pub fn burn(&mut self, amount: Balance) -> Result<()> {
+            self.ensure_not_entered()?;
             let caller = Self::env().caller();
-            if self.paused { return Err(PSP22Error::Custom(String::from("Paused"))); }
+            if self.paused { 
+                self.reset_entered();
+                return Err(PSP22Error::Custom(String::from("Paused"))); 
+            }
             
             let current_balance = self.balance_of(caller);
             if current_balance < amount {
+                self.reset_entered();
                 return Err(PSP22Error::InsufficientBalance);
             }
             
             self.balances.insert(caller, &current_balance.saturating_sub(amount));
             self.total_supply = self.total_supply.saturating_sub(amount);
+            self.reset_entered();
             Ok(())
         }
     }

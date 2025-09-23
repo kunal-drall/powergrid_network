@@ -19,6 +19,19 @@ mod tests {
 
     type E2EResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+    /// Ensure the substrate node is running and healthy before running tests
+    async fn ensure_node_running<C, E>(client: &ink_e2e::Client<C, E>) -> E2EResult<()>
+    where
+        C: ink_e2e::ContractsBackend,
+        E: ink_e2e::Environment,
+    {
+        // Simple health check - if we can connect and get system info, node is ready
+        let _health = client.api().rpc().system_health().await?;
+        let _name = client.api().rpc().system_name().await?;
+        println!("✅ Substrate node is running and healthy");
+        Ok(())
+    }
+
     /// Test actual reward distribution between grid service and token contracts
     #[ink_e2e::test]
     async fn test_cross_contract_reward_distribution(mut client: ink_e2e::Client<C, E>) -> E2EResult<()>
@@ -27,6 +40,9 @@ mod tests {
         E: ink_e2e::Environment,
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
+        // Ensure node is running before proceeding with contract deployment
+        ensure_node_running(&client).await?;
+        
         // Deploy token contract
         let token_constructor = PowergridTokenRef::new(
             1_000_000_000_000_000_000_000u128, // 1000 tokens initial supply
@@ -65,6 +81,14 @@ mod tests {
         assert!(grid_result.is_ok(), "Grid service deployment should succeed");
         let grid_account = grid_result.unwrap().account_id;
 
+        // Add grid service as a minter to enable reward distribution
+        let add_minter_msg = build_message::<PowergridTokenRef>(
+            token_account.clone()
+        ).call(|token| token.add_minter(grid_account));
+        
+        let minter_result = client.call(&ink_e2e::alice(), add_minter_msg, 0, None).await;
+        assert!(minter_result.is_ok(), "Adding grid service as minter should succeed");
+
         // Test 1: Register device in resource registry
         let device_metadata = DeviceMetadata {
             device_type: DeviceType::SmartPlug,
@@ -99,6 +123,14 @@ mod tests {
         let event_result = client.call(&ink_e2e::alice(), create_event_msg, 0, None).await;
         assert!(event_result.is_ok(), "Grid event creation should succeed");
         let event_id = event_result.unwrap().return_value().unwrap();
+
+        // Update grid condition to trigger event activation
+        let update_condition_msg = build_message::<GridServiceRef>(
+            grid_account.clone()
+        ).call(|grid| grid.update_grid_condition(80, 50, 60, 220, 30)); // Load %, capacity, frequency, voltage, renewable %
+        
+        let condition_result = client.call(&ink_e2e::alice(), update_condition_msg, 0, None).await;
+        assert!(condition_result.is_ok(), "Grid condition update should succeed");
 
         // Test 3: Participate in grid event
         let participate_msg = build_message::<GridServiceRef>(
@@ -158,6 +190,9 @@ mod tests {
         E: ink_e2e::Environment,
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
+        // Ensure node is running before proceeding with contract deployment
+        ensure_node_running(&client).await?;
+        
         // Deploy contracts
         let token_constructor = PowergridTokenRef::new(
             1_000_000_000_000_000_000_000u128,
@@ -255,6 +290,9 @@ mod tests {
         E: ink_e2e::Environment,
         <E as ink_e2e::Environment>::Balance: From<u128>,
     {
+        // Ensure node is running before proceeding with contract deployment
+        ensure_node_running(&client).await?;
+        
         // Deploy all contracts
         let token_constructor = PowergridTokenRef::new(
             1_000_000_000_000_000_000_000u128,
@@ -314,6 +352,10 @@ mod tests {
         assert!(vote_result.return_value().is_ok(), "Voting should succeed");
 
         // Test 4: Execute the proposal (in a real scenario, you'd wait for voting period to end)
+        // Advance time to simulate voting period ending
+        use ink_e2e::test::set_block_timestamp;
+        set_block_timestamp(&mut client, client.env().block_timestamp() + 7 * 24 * 60 * 60 * 1000)?;
+        
         let execute_msg = build_message::<GovernanceRef>(
             governance_account.clone()
         ).call(|gov| gov.execute_proposal(proposal_id));

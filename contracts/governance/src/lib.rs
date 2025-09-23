@@ -404,35 +404,20 @@ pub mod governance {
         }
 
         /// Get voting power from PSP22 token balance
+        #[allow(clippy::cast_possible_truncation)]
         fn get_voting_power(&self, account: AccountId) -> u64 {
-            #[cfg(not(test))]
-            {
-                let token = PowergridTokenRef::from_account_id(self.token_address);
-                let bal: u128 = token.balance_of(account);
-                // Downcast safely; governance uses u64 voting units
-                bal.min(u128::from(u64::MAX)) as u64
-            }
-            #[cfg(test)]
-            {
-                // In tests, just return a non-zero value (suppress unused param warning)
-                let _ = account;
-                100
-            }
+            let token = PowergridTokenRef::from_account_id(self.token_address);
+            let bal: u128 = token.balance_of(account);
+            // Downcast safely; governance uses u64 voting units
+            bal.min(u128::from(u64::MAX)) as u64
         }
 
         /// Get total voting power from PSP22 total_supply
+        #[allow(clippy::cast_possible_truncation)]
         fn get_total_voting_power(&self) -> u64 {
-            #[cfg(not(test))]
-            {
-                let token = PowergridTokenRef::from_account_id(self.token_address);
-                let total: u128 = token.total_supply();
-                total.min(u128::from(u64::MAX)) as u64
-            }
-            #[cfg(test)]
-            {
-                // In tests, return a reasonable total
-                10000
-            }
+            let token = PowergridTokenRef::from_account_id(self.token_address);
+            let total: u128 = token.total_supply();
+            total.min(u128::from(u64::MAX)) as u64
         }
     }
 }

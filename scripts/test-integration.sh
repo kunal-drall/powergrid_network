@@ -36,11 +36,9 @@ validate_milestone() {
     
     local tests=(
         "test_complete_user_journey"
-        "test_cross_contract_reputation"
-        "test_governance_parameter_updates"
-        "test_reward_distribution_flow"
-        "test_cross_contract_error_handling"
-        "test_multiple_grid_events"
+        "test_cross_contract_reward_distribution"
+        "test_cross_contract_device_verification"
+        "test_governance_execution_affects_contracts"
     )
     
     local passed=0

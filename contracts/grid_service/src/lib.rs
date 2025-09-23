@@ -295,11 +295,12 @@ pub mod grid_service {
             let now = self.env().block_timestamp();
             if now > event.end_time { self.entered = false; return Err("Event has ended".into()); }
 
-            // Verify device is registered and active in registry (skipped in unit tests)
+            // Verify device is registered and active in registry
             #[cfg(not(test))]
             {
                 let registry = ResourceRegistryRef::from_account_id(self.registry_address);
                 if !registry.is_device_registered(caller) {
+                    self.entered = false;
                     return Err("Device not registered in registry".into());
                 }
             }
@@ -386,35 +387,35 @@ pub mod grid_service {
                 .map(|p| p.reward_earned)
                 .unwrap_or(0);
             
-            // Reputation-based multiplier (80% - 120%) applied to reward; only when not testing
+            // Reputation-based multiplier (80% - 120%) applied to reward
             #[cfg(not(test))]
-            {
-                let registry = ResourceRegistryRef::from_account_id(self.registry_address);
-                if let Some(rep) = registry.get_device_reputation(participant) {
-                    let rep_u128 = rep as u128;
-                    // multiplier in basis points: 8000 + rep*40 (rep 0..=100 -> 0.8x..=1.2x)
-                    let multiplier_bp: u128 = 8000u128.saturating_add(rep_u128.saturating_mul(40));
-                    reward_earned = reward_earned
-                        .saturating_mul(multiplier_bp)
-                        .saturating_div(10_000);
-                }
+            let registry = ResourceRegistryRef::from_account_id(self.registry_address);
+            #[cfg(not(test))]
+            if let Some(rep) = registry.get_device_reputation(participant) {
+                let rep_u128 = rep as u128;
+                // multiplier in basis points: 8000 + rep*40 (rep 0..=100 -> 0.8x..=1.2x)
+                let multiplier_bp: u128 = 8000u128.saturating_add(rep_u128.saturating_mul(40));
+                reward_earned = reward_earned
+                    .saturating_mul(multiplier_bp)
+                    .saturating_div(10_000);
             }
 
-        // Interact with token to mint rewards and update registry (skipped in unit tests)
+            // Interact with token to mint rewards and update registry
+            #[cfg(not(test))]
+            if reward_earned > 0 {
+                let mut token = PowergridTokenRef::from_account_id(self.token_address);
+                // Minting will succeed only if this contract is a minter; assume governance sets it
+                let _ = token.mint(participant, reward_earned);
+                self.env().emit_event(RewardPaid { event_id, participant, amount: reward_earned });
+                // Mark paid
+                if let Some(p) = participations.iter_mut().find(|p| p.participant == participant_bytes) {
+                    p.paid = true;
+                }
+                self.participations.insert(event_id, &participations);
+            }
+
             #[cfg(not(test))]
             {
-                if reward_earned > 0 {
-                    let mut token = PowergridTokenRef::from_account_id(self.token_address);
-                    // Minting will succeed only if this contract is a minter; assume governance sets it
-                    let _ = token.mint(participant, reward_earned);
-            self.env().emit_event(RewardPaid { event_id, participant, amount: reward_earned });
-                    // Mark paid
-                    if let Some(p) = participations.iter_mut().find(|p| p.participant == participant_bytes) {
-                        p.paid = true;
-                    }
-                    self.participations.insert(event_id, &participations);
-                }
-
                 let mut registry = ResourceRegistryRef::from_account_id(self.registry_address);
                 let _ = registry.update_device_performance(participant, actual_reduction, true);
             }
@@ -677,6 +678,7 @@ pub mod grid_service {
                     Some(load_times_100) => {
                         match load_times_100.checked_div(capacity_mw) {
                             Some(percentage) => {
+                                #[allow(clippy::cast_possible_truncation)]
                                 if percentage > 100 { 100u8 } else { percentage as u8 }
                             },
                             None => 0u8,

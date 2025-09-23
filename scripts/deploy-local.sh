@@ -8,14 +8,29 @@ YELLOW='\\033[1;33m'
 RED='\\033[0;31m'
 NC='\\033[0m'
 
+# Determine node URL based on environment
+if [ -n "$NODE_URL" ]; then
+    WS_URL="$NODE_URL"
+elif [ -n "$DOCKER_NETWORK" ]; then
+    WS_URL="ws://node:9944"
+    NODE_CHECK_URL="http://node:9944"
+else
+    WS_URL="ws://localhost:9944"
+    NODE_CHECK_URL="http://localhost:9944"
+fi
+
 check_node() {
-    echo "🔍 Checking if substrate-contracts-node is running..."
-    if curl -s -H "Content-Type: application/json" -d '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params":[]}' http://localhost:9944 2>/dev/null | grep -q '"result"'; then
-        echo -e "${GREEN}✅ substrate-contracts-node is running on port 9944${NC}"
+    echo "🔍 Checking if substrate-contracts-node is running on $WS_URL..."
+    if curl -s -H "Content-Type: application/json" -d '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params":[]}' "$NODE_CHECK_URL" 2>/dev/null | grep -q '"result"'; then
+        echo -e "${GREEN}✅ substrate-contracts-node is running${NC}"
         return 0
     else
-        echo -e "${RED}❌ substrate-contracts-node not responding on port 9944${NC}"
-        echo -e "${YELLOW}💡 Please start it with: substrate-contracts-node --dev --tmp${NC}"
+        echo -e "${RED}❌ substrate-contracts-node not responding${NC}"
+        if [ -z "$DOCKER_NETWORK" ]; then
+            echo -e "${YELLOW}💡 Please start it with: substrate-contracts-node --dev --tmp${NC}"
+        else
+            echo -e "${YELLOW}💡 Please ensure Docker node service is running${NC}"
+        fi
         exit 1
     fi
 }
@@ -36,7 +51,7 @@ deploy_token() {
     DECIMALS=18
     SUPPLY=1000000000000000000000
     
-    cargo contract instantiate --constructor new --args "$NAME" "$SYMBOL" "$DECIMALS" "$SUPPLY" --suri //Alice --url ws://localhost:9944 --execute --skip-confirm --skip-dry-run --gas 1000000000000 --proof-size 1000000 --value 0
+    cargo contract instantiate --constructor new --args "$NAME" "$SYMBOL" "$DECIMALS" "$SUPPLY" --suri //Alice --url "$WS_URL" --execute --skip-confirm --skip-dry-run --gas 1000000000000 --proof-size 1000000 --value 0
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ PowerGrid Token deployed successfully${NC}"

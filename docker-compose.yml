@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Substrate node for smart contract deployment and testing
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9944:9944"
+      - "9933:9933"
+      - "30333:30333"
+    command: >
+      substrate-contracts-node
+      --dev
+      --ws-external
+      --rpc-external
+      --rpc-cors all
+      --unsafe-ws-external
+      --unsafe-rpc-external
+    networks:
+      - powergrid
+
+  # Development and testing environment
+  tester:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    working_dir: /app
+    depends_on:
+      - node
+    environment:
+      - NODE_URL=ws://node:9944
+    networks:
+      - powergrid
+
+networks:
+  powergrid:
+    driver: bridge
+
+volumes:
+  cargo_cache:
+    driver: local
