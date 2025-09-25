@@ -79,6 +79,8 @@ This repository contains the complete implementation of PowerGrid Network's core
 
 ## 🚀 **Quick Start**
 
+> 📘 Looking for detailed OS-specific setup instructions and Docker usage? See [`docs/setup-and-testing.md`](docs/setup-and-testing.md).
+
 ### **Prerequisites**
 - Rust 1.85+ and Cargo
 - cargo-contract v6.0.0+

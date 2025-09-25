@@ -416,7 +416,7 @@ mod test_helpers {
         }
     }
 
-    pub const TEST_MIN_STAKE: u128 = 1_000_000_000_000_000_000;
-    pub const TEST_DEVICE_STAKE: u128 = 2_000_000_000_000_000_000;
+    pub const TEST_MIN_STAKE: u128 = 1_000_000_000_000;
+    pub const TEST_DEVICE_STAKE: u128 = 2_000_000_000_000;
     pub const TEST_INITIAL_SUPPLY: u128 = 1_000_000_000_000_000_000_000;
 }

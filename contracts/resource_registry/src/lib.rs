@@ -88,7 +88,7 @@ pub mod resource_registry {
 
     impl ResourceRegistry {
         /// Constructor
-        #[ink(constructor)]
+    #[ink(constructor, payable)]
         pub fn new(min_stake: Balance) -> Self {
             Self {
                 devices: Mapping::default(),

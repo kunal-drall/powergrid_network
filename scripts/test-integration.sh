@@ -35,10 +35,10 @@ validate_milestone() {
     echo -e "${YELLOW}📊 Validating Milestone 1 Completion...${NC}"
     
     local tests=(
-        "test_complete_user_journey"
-        "test_cross_contract_reward_distribution"
-        "test_cross_contract_device_verification"
-        "test_governance_execution_affects_contracts"
+        "test_real_contract_deployments"
+        "test_cross_contract_deployment_dependencies"
+        "test_device_registration_and_rewards"
+        "test_governance_updates_registry"
     )
     
     local passed=0

@@ -197,7 +197,7 @@ pub mod grid_service {
 
     impl GridService {
         /// Constructor
-        #[ink(constructor)]
+        #[ink(constructor, payable)]
     pub fn new(token_address: AccountId, registry_address: AccountId) -> Self {
             Self {
                 entered: false,

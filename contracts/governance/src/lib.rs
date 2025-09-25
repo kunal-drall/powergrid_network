@@ -108,7 +108,7 @@ pub mod governance {
 
     impl Governance {
         /// Constructor
-        #[ink(constructor)]
+        #[ink(constructor, payable)]
         pub fn new(
             token_address: AccountId,
             registry_address: AccountId,
@@ -248,7 +248,7 @@ pub mod governance {
 
             // Only after voting ends and not executed
             let current_block = self.env().block_number();
-            if (current_block as u64) <= proposal.voting_end { 
+            if (current_block as u64) < proposal.voting_end { 
                 self.entered = false;
                 return Err(Error::ProposalNotExpired); 
             }
@@ -289,7 +289,7 @@ pub mod governance {
 
             // Check if proposal has expired
             let current_block = self.env().block_number();
-            if (current_block as u64) <= proposal.voting_end { 
+            if (current_block as u64) < proposal.voting_end { 
                 self.entered = false;
                 return Err(Error::ProposalNotExpired); 
             }

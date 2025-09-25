@@ -1,67 +1,58 @@
-# PowerGrid Network Docker Container
-# Provides cross-platform development environment for ink! smart contracts
+# PowerGrid Network development container
+# Provides Rust, cargo-contract (v5.0.1), and substrate-contracts-node (v0.42.0)
 
-# Stage 1: Builder - Install Rust, tools, and build contracts
-FROM rust:1.86-bookworm AS builder
+FROM ubuntu:22.04
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    clang \
-    libssl-dev \
-    pkg-config \
-    curl \
-    wget \
-    git \
-    protobuf-compiler \
-    binaryen \
-    wabt \
-    && rm -rf /var/lib/apt/lists/*
+ARG USER=developer
+ARG UID=1000
+ARG GID=1000
+ARG NODE_VERSION=v0.42.0
 
-# Install cargo-contract (locked to 5.0.1 for ink! 5.1.1 compatibility)
-RUN cargo install --force --locked cargo-contract --version 5.0.1
+ENV DEBIAN_FRONTEND=noninteractive \
+    RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:/usr/local/bin:$PATH \
+    CARGO_TARGET_DIR=/tmp/cargo-target
 
-# Install substrate-contracts-node v0.42.0
-RUN wget https://github.com/paritytech/substrate-contracts-node/releases/download/v0.42.0/substrate-contracts-node-linux.tar.gz && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        clang \
+        curl \
+        git \
+        pkg-config \
+        libssl-dev \
+        protobuf-compiler \
+        ca-certificates \
+        wget \
+        jq \
+        cmake \
+        binaryen && \
+    rm -rf /var/lib/apt/lists/*
+
+# Allow sourcing cargo environment in subsequent RUN commands
+SHELL ["/bin/bash", "-lc"]
+
+# Install Rust toolchain and ink! tooling
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+    source /usr/local/cargo/env && \
+    rustup target add wasm32-unknown-unknown && \
+    rustup component add rust-src && \
+    cargo install --locked cargo-contract --version 5.0.1
+
+# Install substrate-contracts-node binary
+RUN wget -q https://github.com/paritytech/substrate-contracts-node/releases/download/${NODE_VERSION}/substrate-contracts-node-linux.tar.gz && \
     tar -xzf substrate-contracts-node-linux.tar.gz && \
-    mv substrate-contracts-node-linux/substrate-contracts-node /usr/local/bin/ && \
-    chmod +x /usr/local/bin/substrate-contracts-node && \
-    rm -rf substrate-contracts-node-linux.tar.gz substrate-contracts-node-linux
+    install -m 0755 substrate-contracts-node-linux/substrate-contracts-node /usr/local/bin/substrate-contracts-node && \
+    rm -rf substrate-contracts-node-linux substrate-contracts-node-linux.tar.gz
 
-# Add WASM target
-RUN rustup target add wasm32-unknown-unknown && \
-    rustup component add rust-src
+# Create non-root user for interactive workflows
+RUN groupadd -g ${GID} ${USER} && \
+    useradd -m -u ${UID} -g ${GID} ${USER}
 
-# Set working directory
-WORKDIR /app
+USER ${USER}
+WORKDIR /workspace
 
-# Copy project files
-COPY . /app
-
-# Build all contracts
-RUN ./scripts/build-all.sh
-
-# Stage 2: Runtime - Lightweight image for running node and tests
-FROM debian:bookworm-slim
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy substrate-contracts-node from builder
-COPY --from=builder /usr/local/bin/substrate-contracts-node /usr/local/bin/
-
-# Copy built artifacts and scripts from builder
-COPY --from=builder /app /app
-
-# Set working directory
-WORKDIR /app
-
-# Expose ports for node (RPC, WS, P2P)
 EXPOSE 9944 9933 30333
 
-# Default command (interactive shell for tester)
 CMD ["bash"]

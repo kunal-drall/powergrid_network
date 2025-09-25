@@ -57,7 +57,7 @@ pub mod powergrid_token {
     pub type Result<T> = core::result::Result<T, PSP22Error>;
 
     impl PowergridToken {
-        #[ink(constructor)]
+    #[ink(constructor, payable)]
         pub fn new(name: String, symbol: String, decimals: u8, initial_supply: Balance) -> Self {
             let caller = Self::env().caller();
             let mut instance = Self {
