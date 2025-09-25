@@ -82,9 +82,9 @@ This repository contains the complete implementation of PowerGrid Network's core
 > 📘 Looking for detailed OS-specific setup instructions and Docker usage? See [`docs/setup-and-testing.md`](docs/setup-and-testing.md).
 
 ### **Prerequisites**
-- Rust 1.85+ and Cargo
-- cargo-contract v6.0.0+
-- Substrate Contracts Node (for local testing)
+- Rust 1.86.0 toolchain (via rustup)
+- cargo-contract v5.0.1
+- Substrate Contracts Node v0.42.0 (for local testing)
 
 ### **1. Clone and Setup**
 ```bash
@@ -123,13 +123,15 @@ The script will deploy all contracts and save their addresses to `deployment/loc
 1. **Install Rust and Cargo**
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup install nightly
-rustup target add wasm32-unknown-unknown --toolchain nightly
+rustup toolchain install 1.86.0 --profile minimal
+rustup component add rust-src --toolchain 1.86.0
+rustup component add clippy --toolchain 1.86.0
+rustup target add wasm32-unknown-unknown --toolchain 1.86.0
 ```
 
 2. **Install cargo-contract**
 ```bash
-cargo install cargo-contract --force --locked
+cargo install cargo-contract --version 5.0.1 --force --locked
 ```
 
 3. **Install Substrate Contracts Node** (for local development)
@@ -153,6 +155,9 @@ cargo install mdbook
 # Clone the repository
 git clone https://github.com/kunal-drall/powergrid_network.git
 cd powergrid_network
+
+# Ensure the ink! toolchain is used for contract builds
+export WASM_BUILD_TOOLCHAIN=1.86.0
 
 # Install project dependencies
 cargo build
@@ -685,6 +690,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 For questions and support:
 - Create an issue in this repository
 - Check the ink! documentation
+
+
+
+
 - Join the Polkadot technical community
 
 ---
