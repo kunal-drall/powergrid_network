@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   node:
     build: .
-    command: substrate-contracts-node --dev --tmp --ws-external --rpc-external --rpc-cors all --unsafe-ws-external --unsafe-rpc-external
+    command: substrate-contracts-node --dev --tmp --rpc-external --rpc-cors all --unsafe-rpc-external
     ports:
       - "9944:9944"  # WS/RPC
       - "9933:9933"  # HTTP RPC
