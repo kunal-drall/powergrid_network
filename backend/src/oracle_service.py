@@ -1,0 +1,286 @@
+import asyncio
+import logging
+from datetime import datetime
+import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from tapo_monitor import TapoMonitor
+from blockchain_client import BlockchainClient
+from config.config import Config
+
+# Configure logging
+log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(log_dir, 'oracle.log')),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+
+class PowerGridOracle:
+    """Main Oracle Service for PowerGrid Network"""
+    
+    def __init__(self):
+        self.tapo_monitor = None
+        self.blockchain_client = None
+        self.is_running = False
+        self.device_registered = False
+        
+    async def initialize(self):
+        """Initialize all components"""
+        logger.info("=" * 60)
+        logger.info("🚀 PowerGrid Oracle Service Starting...")
+        logger.info("=" * 60)
+        
+        # Validate configuration
+        try:
+            Config.validate()
+            logger.info("✅ Configuration validated")
+        except ValueError as e:
+            logger.error(f"❌ Configuration error: {e}")
+            return False
+        
+        # Initialize Tapo Monitor
+        logger.info("\n📡 Initializing Tapo Monitor...")
+        self.tapo_monitor = TapoMonitor(
+            Config.TAPO_EMAIL,
+            Config.TAPO_PASSWORD,
+            Config.TAPO_DEVICE_IP
+        )
+        
+        if not await self.tapo_monitor.connect():
+            logger.warning("⚠️  Failed to connect to Tapo device - will retry in monitoring loop")
+            # Don't fail completely, allow retries
+        
+        # Initialize Blockchain Client
+        logger.info("\n⛓️  Initializing Blockchain Client...")
+        self.blockchain_client = BlockchainClient(
+            Config.SUBSTRATE_RPC_URL,
+            Config.DEVICE_OWNER_SEED
+        )
+        
+        if not self.blockchain_client.connect():
+            logger.error("❌ Failed to connect to blockchain")
+            return False
+        
+        # Load contracts
+        if not self.blockchain_client.load_contracts(
+            Config.TOKEN_CONTRACT,
+            Config.REGISTRY_CONTRACT,
+            Config.GRID_SERVICE_CONTRACT,
+            Config.GOVERNANCE_CONTRACT
+        ):
+            logger.error("❌ Failed to load contracts")
+            return False
+        
+        # Check account balance
+        balance = self.blockchain_client.get_account_balance()
+        if balance < 10:  # Need at least 10 tokens for gas
+            logger.warning(f"⚠️  Low account balance: {balance} tokens")
+        else:
+            logger.info(f"✅ Account balance: {balance:.2f} tokens")
+        
+        logger.info("\n✅ Oracle initialized successfully!")
+        return True
+    
+    async def ensure_device_registered(self):
+        """Ensure device is registered on blockchain"""
+        logger.info("\n🔍 Checking device registration...")
+        
+        is_registered = self.blockchain_client.is_device_registered()
+        
+        if is_registered:
+            logger.info("✅ Device already registered")
+            self.device_registered = True
+            
+            # Get reputation
+            reputation = self.blockchain_client.get_device_reputation()
+            logger.info(f"📊 Current reputation: {reputation}")
+            return True
+        
+        # Device not registered - register it now
+        logger.info("📝 Device not registered. Registering now...")
+        
+        success = self.blockchain_client.register_device(
+            Config.DEVICE_METADATA,
+            Config.STAKE_AMOUNT
+        )
+        
+        if success:
+            self.device_registered = True
+            logger.info("✅ Device registered successfully!")
+            return True
+        else:
+            logger.error("❌ Device registration failed")
+            return False
+    
+    async def check_and_participate_in_events(self, energy_data: dict):
+        """Check for active events and participate"""
+        try:
+            # Get active events
+            active_events = self.blockchain_client.get_active_events()
+            
+            if not active_events:
+                logger.debug("No active grid events")
+                return
+            
+            logger.info(f"📢 Found {len(active_events)} active event(s)")
+            
+            # For each active event
+            for idx, event in enumerate(active_events):
+                # Handle different event formats (tuple, dict, etc.)
+                if isinstance(event, (list, tuple)) and len(event) >= 2:
+                    event_id = event[0]
+                    event_data = event[1] if len(event) > 1 else {}
+                elif isinstance(event, dict):
+                    event_id = event.get('event_id', idx)
+                    event_data = event
+                else:
+                    event_id = idx
+                    event_data = {}
+                
+                # Extract event info safely
+                event_type = event_data.get('event_type', 'Unknown') if isinstance(event_data, dict) else 'Unknown'
+                target_reduction = event_data.get('target_reduction_kw', 0) if isinstance(event_data, dict) else 0
+                compensation_rate = event_data.get('base_compensation_rate', 0) if isinstance(event_data, dict) else 0
+                
+                logger.info(f"\n🎯 Event {event_id}: {event_type}")
+                logger.info(f"   Target reduction: {target_reduction} kW")
+                logger.info(f"   Compensation rate: {compensation_rate}")
+                
+                # Calculate energy contribution (today's energy in Wh)
+                energy_contribution = energy_data['energy_usage']['today_energy_wh']
+                
+                if energy_contribution > 0:
+                    # Participate in event
+                    success = self.blockchain_client.participate_in_event(
+                        event_id,
+                        energy_contribution
+                    )
+                    
+                    if success:
+                        logger.info(f"✅ Participated with {energy_contribution} Wh")
+                    else:
+                        logger.error(f"❌ Participation failed for event {event_id}")
+                else:
+                    logger.info("⚠️  No energy contribution to report yet")
+                    
+        except Exception as e:
+            logger.error(f"Error in event participation: {e}")
+    
+    async def monitoring_loop(self):
+        """Main monitoring loop"""
+        logger.info("\n" + "=" * 60)
+        logger.info("🔄 Starting monitoring loop...")
+        logger.info(f"⏱️  Interval: {Config.MONITORING_INTERVAL} seconds")
+        logger.info("=" * 60)
+        
+        iteration = 0
+        
+        while self.is_running:
+            try:
+                iteration += 1
+                logger.info(f"\n{'='*60}")
+                logger.info(f"📊 Monitoring Iteration #{iteration}")
+                logger.info(f"🕐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                logger.info(f"{'='*60}")
+                
+                # 1. Get device snapshot (with retry logic)
+                logger.info("1️⃣  Reading Tapo device data...")
+                snapshot = None
+                
+                # Retry connection if needed
+                if not self.tapo_monitor.device:
+                    logger.info("   Reconnecting to Tapo device...")
+                    await self.tapo_monitor.connect()
+                
+                if self.tapo_monitor.device:
+                    snapshot = await self.tapo_monitor.get_complete_snapshot()
+                
+                if not snapshot:
+                    logger.warning("⚠️  Failed to get device snapshot - will retry next iteration")
+                    await asyncio.sleep(Config.MONITORING_INTERVAL)
+                    continue
+                
+                # Log current stats
+                current_power = snapshot['current_power']['power_watts']
+                today_energy = snapshot['energy_usage']['today_energy_kwh']
+                
+                logger.info(f"⚡ Current Power: {current_power:.2f} W")
+                logger.info(f"📈 Today's Energy: {today_energy:.3f} kWh")
+                
+                # 2. Check device registration (once)
+                if not self.device_registered:
+                    logger.info("\n2️⃣  Checking device registration...")
+                    await self.ensure_device_registered()
+                
+                # 3. Check for active grid events
+                logger.info("\n3️⃣  Checking for grid events...")
+                await self.check_and_participate_in_events(snapshot)
+                
+                # 4. Check token balance
+                logger.info("\n4️⃣  Checking rewards...")
+                token_balance = self.blockchain_client.get_token_balance()
+                if token_balance > 0:
+                    balance_tokens = token_balance / 10**18
+                    logger.info(f"💰 PWGD Balance: {balance_tokens:.4f} tokens")
+                else:
+                    logger.info(f"💰 PWGD Balance: 0 tokens")
+                
+                # Wait before next iteration
+                logger.info(f"\n⏳ Waiting {Config.MONITORING_INTERVAL} seconds...")
+                await asyncio.sleep(Config.MONITORING_INTERVAL)
+                
+            except KeyboardInterrupt:
+                logger.info("\n⚠️  Interrupt received, shutting down...")
+                break
+                
+            except Exception as e:
+                logger.error(f"❌ Error in monitoring loop: {e}", exc_info=True)
+                await asyncio.sleep(Config.MONITORING_INTERVAL)
+    
+    async def start(self):
+        """Start the oracle service"""
+        if not await self.initialize():
+            logger.error("❌ Initialization failed. Exiting.")
+            return
+        
+        self.is_running = True
+        
+        try:
+            await self.monitoring_loop()
+        finally:
+            self.is_running = False
+            logger.info("\n" + "=" * 60)
+            logger.info("👋 PowerGrid Oracle Service Stopped")
+            logger.info("=" * 60)
+    
+    async def stop(self):
+        """Stop the oracle service"""
+        self.is_running = False
+
+
+# Main entry point
+async def main():
+    oracle = PowerGridOracle()
+    
+    try:
+        await oracle.start()
+    except KeyboardInterrupt:
+        logger.info("\n⚠️  Shutting down gracefully...")
+        await oracle.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+

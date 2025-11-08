@@ -1,0 +1,10 @@
+#!/bin/bash
+TOKEN_ADDR="5FY8e8RtXKDWdeAhnYcBv7TjojDt6NxJNmX7T1TRrZZSZMyk"
+REGISTRY_ADDR="5D12ZE2pVZTb3v7RnSMMnf4LPHCAEbcwQWE1TAF9qQiYbFDh"
+
+# Update .env file
+sed -i.bak "s|TOKEN_CONTRACT_ADDRESS=.*|TOKEN_CONTRACT_ADDRESS=$TOKEN_ADDR|" .env
+sed -i.bak "s|REGISTRY_CONTRACT_ADDRESS=.*|REGISTRY_CONTRACT_ADDRESS=$REGISTRY_ADDR|" .env
+
+echo "✅ Updated Token and Registry addresses"
+grep "CONTRACT_ADDRESS" .env

@@ -45,11 +45,12 @@ RUN /usr/local/cargo/bin/rustup component add rust-src --toolchain 1.86.0 && \
     /usr/local/cargo/bin/rustup target add wasm32-unknown-unknown --toolchain 1.86.0 && \
     /usr/local/cargo/bin/cargo install --locked cargo-contract --version 5.0.1
 
-# Install substrate-contracts-node v0.42.0
-RUN wget -q https://github.com/paritytech/substrate-contracts-node/releases/download/${NODE_VERSION}/substrate-contracts-node-linux.tar.gz && \
-    tar -xzf substrate-contracts-node-linux.tar.gz && \
-    install -m 0755 substrate-contracts-node-linux/substrate-contracts-node /usr/local/bin/substrate-contracts-node && \
-    rm -rf substrate-contracts-node-linux substrate-contracts-node-linux.tar.gz
+# Install substrate-contracts-node v0.42.0 from source (works on all architectures)
+# Build without --locked to allow dependency resolution
+RUN cargo install contracts-node \
+    --git https://github.com/paritytech/substrate-contracts-node.git \
+    --tag ${NODE_VERSION} \
+    --force
 
 # Create non-root user for interactive workflows
 RUN groupadd -g ${GID} ${USER} && \
@@ -62,7 +63,7 @@ RUN chown -R ${UID}:${GID} /usr/local/cargo /usr/local/rustup
 RUN mkdir -p ${CARGO_TARGET_DIR} && chown -R ${UID}:${GID} ${CARGO_TARGET_DIR}
 
 USER ${USER}
-WORKDIR /workspace
+WORKDIR /app
 
 # Expose Substrate node ports
 EXPOSE 9944 9933 30333

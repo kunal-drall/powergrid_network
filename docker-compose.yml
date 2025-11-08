@@ -1,6 +1,9 @@
 services:
   node:
-    build: .
+    build:
+      context: .
+      platform: linux/arm64
+    working_dir: /app
     command: substrate-contracts-node --dev --tmp --rpc-external --rpc-cors all --unsafe-rpc-external
     ports:
       - "9944:9944"  # WS/RPC
@@ -11,9 +14,12 @@ services:
     restart: unless-stopped  # Keeps running in background
 
   tester:
-    build: .
+    build:
+      context: .
+      platform: linux/arm64
     depends_on:
       - node
+    working_dir: /app
     volumes:
       - .:/app  # Sync code changes
     environment:

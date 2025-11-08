@@ -51,7 +51,7 @@ deploy_token() {
     DECIMALS=18
     SUPPLY=1000000000000000000000
     
-    cargo contract instantiate --constructor new --args "$NAME" "$SYMBOL" "$DECIMALS" "$SUPPLY" --suri //Alice --url "$WS_URL" --execute --skip-confirm --skip-dry-run --gas 1000000000000 --proof-size 1000000 --value 0
+    cargo contract instantiate --constructor new --args "\"$NAME\"" "\"$SYMBOL\"" "$DECIMALS" "$SUPPLY" --suri //Alice --url "$WS_URL" --execute --skip-confirm --skip-dry-run --gas 1000000000000 --proof-size 1000000 --value 0
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ PowerGrid Token deployed successfully${NC}"
@@ -74,7 +74,7 @@ deploy_registry() {
     
     echo "🚀 Deploying Resource Registry..."
     
-    cargo contract instantiate --constructor new --args 1000000000000000000 --suri //Alice --url ws://localhost:9944 --execute --skip-confirm --skip-dry-run --gas 1000000000000 --proof-size 1000000 --value 0
+    cargo contract instantiate --constructor new --args 1000000000000000000 --suri //Alice --url "$WS_URL" --execute --skip-confirm --skip-dry-run --gas 1000000000000 --proof-size 1000000 --value 0
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Resource Registry deployed successfully${NC}"
