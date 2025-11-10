@@ -1,26 +1,60 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
-venv/
-env/
-ENV/
+# Rust build artifacts
+**/target/
+**/*.rs.bk
+**/Cargo.lock
+**/.cargo/
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-*.bak
+# Compiled ink! contracts - DO NOT COMMIT
+**/*.wasm
+**/*.contract
+**/target/ink/
+**/*.so
+**/*.dylib
+**/*.dll
+
+# Node.js (if any)
+**/node_modules/
+**/package-lock.json
+npm-debug.log*
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/.Python
+**/venv/
+**/env/
+**/ENV/
+**/*.egg-info/
+**/.pytest_cache/
+**/.tox/
+
+# Backend config (generated ABIs and cache)
+backend/config/
+**/backend/config/
 
 # Logs
 *.log
-logs/
-backend/logs/
+**/logs/
+**/log/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+**/.env
+*.bak
+*secret*
+*password*
+*credentials*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Docker
+.dockerignore
+docker-compose.override.yml
 
 # IDE
 .vscode/
@@ -33,17 +67,17 @@ backend/logs/
 .DS_Store
 Thumbs.db
 
-# Contract artifacts
-contracts/**/target/
-contracts/**/Cargo.lock
-*.contract
-*.wasm
-*.metadata.json
+# Build outputs
+**/build/
+**/dist/
+**/out/
 
-# Deployment
+# Temporary
+**/tmp/
+**/.tmp/
+**/*.tmp
+
+# Deployment artifacts
 deployment/
-*.contract
-
-# Temporary files
-/tmp/
-*.tmp
+*.metadata.json
+*.json.bak

@@ -159,7 +159,10 @@ class PowerGridOracle:
                 logger.info(f"   Compensation rate: {compensation_rate}")
                 
                 # Calculate energy contribution (today's energy in Wh)
-                energy_contribution = energy_data['energy_usage']['today_energy_wh']
+                try:
+                    energy_contribution = energy_data.get('energy_usage', {}).get('today_energy_wh', 0) if energy_data else 0
+                except (KeyError, TypeError):
+                    energy_contribution = 0
                 
                 if energy_contribution > 0:
                     # Participate in event
@@ -206,15 +209,27 @@ class PowerGridOracle:
                 
                 if self.tapo_monitor.device:
                     snapshot = await self.tapo_monitor.get_complete_snapshot()
+                else:
+                    snapshot = None
                 
                 if not snapshot:
                     logger.warning("⚠️  Failed to get device snapshot - will retry next iteration")
+                    # Try to reconnect
+                    if not self.tapo_monitor.device:
+                        logger.info("   Attempting to reconnect to Tapo device...")
+                        await self.tapo_monitor.connect()
                     await asyncio.sleep(Config.MONITORING_INTERVAL)
                     continue
                 
                 # Log current stats
-                current_power = snapshot['current_power']['power_watts']
-                today_energy = snapshot['energy_usage']['today_energy_kwh']
+                try:
+                    current_power = snapshot.get('current_power', {}).get('power_watts', 0.0) if snapshot else 0.0
+                    today_energy = snapshot.get('energy_usage', {}).get('today_energy_kwh', 0.0) if snapshot else 0.0
+                except (KeyError, TypeError) as e:
+                    logger.error(f"Error parsing snapshot data: {e}")
+                    logger.warning("⚠️  Invalid snapshot data - will retry next iteration")
+                    await asyncio.sleep(Config.MONITORING_INTERVAL)
+                    continue
                 
                 logger.info(f"⚡ Current Power: {current_power:.2f} W")
                 logger.info(f"📈 Today's Energy: {today_energy:.3f} kWh")
