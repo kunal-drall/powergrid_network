@@ -137,26 +137,56 @@ class PowerGridOracle:
             logger.info(f"📢 Found {len(active_events)} active event(s)")
             
             # For each active event
+            # Events are returned as tuples: (event_id, GridEvent)
             for idx, event in enumerate(active_events):
-                # Handle different event formats (tuple, dict, etc.)
+                # Handle tuple format: (event_id, GridEvent)
                 if isinstance(event, (list, tuple)) and len(event) >= 2:
                     event_id = event[0]
-                    event_data = event[1] if len(event) > 1 else {}
+                    event_data = event[1]
                 elif isinstance(event, dict):
                     event_id = event.get('event_id', idx)
                     event_data = event
                 else:
+                    logger.warning(f"Unexpected event format: {type(event)}, value: {event}")
                     event_id = idx
                     event_data = {}
                 
-                # Extract event info safely
-                event_type = event_data.get('event_type', 'Unknown') if isinstance(event_data, dict) else 'Unknown'
-                target_reduction = event_data.get('target_reduction_kw', 0) if isinstance(event_data, dict) else 0
-                compensation_rate = event_data.get('base_compensation_rate', 0) if isinstance(event_data, dict) else 0
+                # Extract event info from GridEvent struct
+                # GridEvent has: event_type, target_reduction_kw, base_compensation_rate, etc.
+                event_type = 'Unknown'
+                target_reduction = 0
+                compensation_rate = 0
                 
-                logger.info(f"\n🎯 Event {event_id}: {event_type}")
+                # Handle different data structures
+                if isinstance(event_data, dict):
+                    # Direct dict access
+                    event_type = event_data.get('event_type', 'Unknown')
+                    target_reduction = event_data.get('target_reduction_kw', 0)
+                    compensation_rate = event_data.get('base_compensation_rate', 0)
+                elif hasattr(event_data, '__dict__'):
+                    # Object with attributes
+                    event_type = getattr(event_data, 'event_type', 'Unknown')
+                    target_reduction = getattr(event_data, 'target_reduction_kw', 0)
+                    compensation_rate = getattr(event_data, 'base_compensation_rate', 0)
+                elif isinstance(event_data, (list, tuple)) and len(event_data) >= 3:
+                    # Tuple/list format: (event_type, target_reduction_kw, base_compensation_rate, ...)
+                    event_type = event_data[0] if len(event_data) > 0 else 'Unknown'
+                    target_reduction = event_data[2] if len(event_data) > 2 else 0
+                    compensation_rate = event_data[1] if len(event_data) > 1 else 0
+                
+                # Handle event_type enum (could be dict like {'DemandResponse': None} or string)
+                if isinstance(event_type, dict):
+                    # Extract enum variant name
+                    event_type_str = list(event_type.keys())[0] if event_type else 'Unknown'
+                else:
+                    event_type_str = str(event_type)
+                
+                # Convert compensation rate from wei to tokens (18 decimals)
+                compensation_tokens = compensation_rate / 10**18 if compensation_rate else 0
+                
+                logger.info(f"\n🎯 Event {event_id}: {event_type_str}")
                 logger.info(f"   Target reduction: {target_reduction} kW")
-                logger.info(f"   Compensation rate: {compensation_rate}")
+                logger.info(f"   Compensation rate: {compensation_tokens:.4f} tokens/kWh ({compensation_rate} wei)")
                 
                 # Calculate energy contribution (today's energy in Wh)
                 try:
