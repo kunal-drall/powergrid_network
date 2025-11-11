@@ -103,24 +103,51 @@ class BlockchainClient:
             
             # Handle different response formats
             data = result.contract_result_data
+            
+            # Extract value from ink! type object if it has a value attribute
+            if hasattr(data, 'value'):
+                data = data.value
+            
             if isinstance(data, dict):
-                # Handle Ok/Err format
+                # Handle Ok/Err format: {'Ok': True/False} or {'Ok': {...}}
                 if 'Ok' in data:
-                    return data['Ok']
+                    ok_value = data['Ok']
+                    # If Ok contains a boolean, return it directly
+                    if isinstance(ok_value, bool):
+                        return ok_value
+                    # If Ok contains a dict with a boolean value
+                    if isinstance(ok_value, dict) and 'value' in ok_value:
+                        return bool(ok_value['value'])
+                    # Otherwise try to convert
+                    return bool(ok_value)
                 elif 'Err' in data:
+                    logger.debug(f"Error checking registration: {data['Err']}")
                     return False
-                else:
-                    return bool(data)
-            return bool(data)
+            elif data is None:
+                return False
+            else:
+                # Direct boolean or other type
+                return bool(data)
+            
+            return False
             
         except Exception as e:
-            logger.error(f"Error checking registration: {e}")
+            logger.error(f"Error checking device registration: {e}")
             return False
     
     def register_device(self, metadata: dict, stake_amount: int) -> bool:
-        """Register device on blockchain"""
+        """Register device on blockchain
+        
+        Args:
+            metadata: Device metadata dictionary
+            stake_amount: Stake amount in native token units (12 decimals)
+        """
         try:
-            logger.info(f"Registering device with stake: {stake_amount}")
+            from config.config import Config
+            
+            # stake_amount is already in native units (12 decimals) from Config
+            stake_tokens = Config.native_to_tokens(stake_amount)
+            logger.info(f"Registering device with stake: {stake_amount} native units ({stake_tokens:.4f} tokens)")
             
             # Format metadata for contract
             device_metadata = {
@@ -133,13 +160,26 @@ class BlockchainClient:
                 'installation_date': metadata['installation_date']
             }
             
-            # Execute transaction
+            # Check available balance (native token uses 12 decimals)
+            account_result = self.substrate.query('System', 'Account', [self.keypair.ss58_address])
+            account_data = account_result.value
+            available_balance = account_data['data']['free'] - account_data['data']['frozen']
+            
+            if available_balance < stake_amount:
+                logger.error(f"❌ Insufficient balance: need {Config.native_to_tokens(stake_amount):.4f} tokens, have {Config.native_to_tokens(available_balance):.4f} tokens")
+                return False
+            
+            logger.info(f"   Available balance: {Config.native_to_tokens(available_balance):.4f} tokens")
+            logger.info(f"   Stake amount: {stake_tokens:.4f} tokens")
+            
+            # Execute transaction with value transfer
+            # stake_amount is already in native token units (12 decimals)
             receipt = self.registry_contract.exec(
                 self.keypair,
                 'register_device',
                 args={'metadata': device_metadata},
-                value=stake_amount,  # Stake amount
-                gas_limit={'ref_time': 10000000000, 'proof_size': 1000000}
+                value=stake_amount,  # Native token units (12 decimals)
+                gas_limit={'ref_time': 20000000000, 'proof_size': 2000000}
             )
             
             if receipt.is_success:
@@ -148,10 +188,14 @@ class BlockchainClient:
                 return True
             else:
                 logger.error(f"❌ Registration failed: {receipt.error_message}")
+                if hasattr(receipt, 'error_data'):
+                    logger.error(f"   Error data: {receipt.error_data}")
                 return False
                 
         except Exception as e:
             logger.error(f"Error registering device: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             return False
     
     def get_device_reputation(self) -> int:
@@ -184,7 +228,11 @@ class BlockchainClient:
     # ===== GRID SERVICE CONTRACT METHODS =====
     
     def get_active_events(self) -> list:
-        """Get list of active grid events"""
+        """Get list of active grid events
+        
+        Returns list of tuples: [(event_id, GridEvent), ...]
+        GridEvent has fields: event_type, target_reduction_kw, base_compensation_rate, etc.
+        """
         try:
             result = self.grid_service_contract.read(
                 self.keypair,
@@ -193,53 +241,46 @@ class BlockchainClient:
             
             # Handle different response formats
             data = result.contract_result_data
-            if isinstance(data, list):
-                # Handle ['Ok', <ink_type>] format
-                if len(data) >= 2 and data[0] == 'Ok':
-                    events_obj = data[1]
-                    # Extract value from ink type
-                    if hasattr(events_obj, 'value'):
-                        events = events_obj.value
-                        if isinstance(events, list):
-                            logger.info(f"Found {len(events)} active events")
-                            return events
-                    return []
-                # Regular list
-                logger.info(f"Found {len(data)} active events")
-                return data
-            elif isinstance(data, dict):
-                # Handle Ok/Err format
+            
+            # Extract value from ink! type object if it has a value attribute
+            if hasattr(data, 'value'):
+                data = data.value
+            
+            # The data structure is: {'Ok': [(event_id, event_dict), ...]}
+            if isinstance(data, dict):
                 if 'Ok' in data:
                     events = data['Ok']
-                    # Extract from ink type if needed
-                    if hasattr(events, 'value'):
-                        events = events.value
                     if isinstance(events, list):
                         logger.info(f"Found {len(events)} active events")
                         return events
                     else:
-                        # Might be a tuple or other structure
+                        # Convert to list if it's iterable
                         return list(events) if events else []
                 elif 'Err' in data:
+                    logger.warning(f"Error getting events: {data['Err']}")
                     return []
+            elif isinstance(data, list):
+                # Direct list format
+                logger.info(f"Found {len(data)} active events")
+                return data
             else:
-                # Try to convert to list
+                # Try to extract from other formats
                 try:
-                    # Extract from ink type if needed
                     if hasattr(data, 'value'):
                         events = data.value
-                    else:
-                        events = data
-                    events_list = list(events) if events else []
-                    logger.info(f"Found {len(events_list)} active events")
-                    return events_list
-                except:
+                        if isinstance(events, dict) and 'Ok' in events:
+                            events = events['Ok']
+                        return list(events) if events else []
+                except Exception as e:
+                    logger.debug(f"Failed to extract events: {e}")
                     return []
             
             return []
             
         except Exception as e:
             logger.error(f"Error getting active events: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             return []
     
     def participate_in_event(self, event_id: int, energy_contribution_wh: int) -> bool:

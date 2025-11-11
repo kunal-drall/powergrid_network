@@ -4,7 +4,7 @@
 pub mod resource_registry {
     use ink::prelude::{string::String, vec::Vec};
     use ink::storage::Mapping;
-    use powergrid_shared::{DeviceMetadata, Device, ink_account_to_bytes};
+    use powergrid_shared::{DeviceMetadata, Device, ink_account_to_bytes, tokens_to_native};
 
     /// The ResourceRegistry contract
     #[ink(storage)]
@@ -88,8 +88,12 @@ pub mod resource_registry {
 
     impl ResourceRegistry {
         /// Constructor
-    #[ink(constructor, payable)]
-        pub fn new(min_stake: Balance) -> Self {
+        /// Accepts min_stake in tokens (human-readable), converts to native units
+        #[ink(constructor, payable)]
+        pub fn new(min_stake_tokens: u128) -> Self {
+            // Accept in tokens, store in native units
+            let min_stake = tokens_to_native(min_stake_tokens);
+            
             Self {
                 devices: Mapping::default(),
                 min_stake,

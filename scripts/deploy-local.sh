@@ -73,8 +73,9 @@ deploy_registry() {
     cargo contract build --release --quiet
     
     echo "🚀 Deploying Resource Registry..."
-    
-    cargo contract instantiate --constructor new --args 1000000000000000000 --suri //Alice --url "$WS_URL" --execute --skip-confirm --skip-dry-run --gas 1000000000000 --proof-size 1000000 --value 0
+    # Contract now accepts min_stake in tokens (human-readable), converts to native units internally
+    # 1 token minimum stake
+    cargo contract instantiate --constructor new --args 1 --suri //Alice --url "$WS_URL" --execute --skip-confirm --skip-dry-run --gas 1000000000000 --proof-size 1000000 --value 0
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Resource Registry deployed successfully${NC}"
