@@ -14,7 +14,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     CARGO_TARGET_DIR=/tmp/cargo-target \
     WASM_BUILD_TOOLCHAIN=1.86.0
 
-# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
@@ -29,41 +28,32 @@ RUN apt-get update && \
         jq \
         cmake \
         binaryen \
-    && apt-get clean \
+        sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust 1.86.0
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-    sh -s -- -y --default-toolchain 1.86.0 --profile minimal --component rust-src
+# Use bash for all RUN commands so cargo env is available
+SHELL ["/bin/bash", "-lc"]
 
-# Add Rust to PATH
-ENV PATH="/usr/local/cargo/bin:${PATH}"
+# Install Rust 1.86.0, rust-src, clippy, wasm target, cargo-contract (ink! 5.0.1)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.86.0 --profile minimal && \
+    source /usr/local/cargo/env && \
+    rustup component add rust-src --toolchain 1.86.0 && \
+    rustup component add clippy --toolchain 1.86.0 && \
+    rustup target add wasm32-unknown-unknown --toolchain 1.86.0 && \
+    cargo install --locked cargo-contract --version 5.0.1
 
-# Install Rust components and tools
-RUN /usr/local/cargo/bin/rustup component add rust-src --toolchain 1.86.0 && \
-    /usr/local/cargo/bin/rustup component add clippy --toolchain 1.86.0 && \
-    /usr/local/cargo/bin/rustup target add wasm32-unknown-unknown --toolchain 1.86.0 && \
-    /usr/local/cargo/bin/cargo install --locked cargo-contract --version 5.0.1
-
-# Install substrate-contracts-node v0.42.0 from source (works on all architectures)
-# Build without --locked to allow dependency resolution
-RUN cargo install contracts-node \
-    --git https://github.com/paritytech/substrate-contracts-node.git \
-    --tag ${NODE_VERSION} \
-    --force
+# Install substrate-contracts-node v0.42.0
+RUN wget -q https://github.com/paritytech/substrate-contracts-node/releases/download/${NODE_VERSION}/substrate-contracts-node-linux.tar.gz && \
+    tar -xzf substrate-contracts-node-linux.tar.gz && \
+    install -m 0755 substrate-contracts-node-linux/substrate-contracts-node /usr/local/bin/substrate-contracts-node && \
+    rm -rf substrate-contracts-node-linux substrate-contracts-node-linux.tar.gz
 
 # Create non-root user for interactive workflows
 RUN groupadd -g ${GID} ${USER} && \
     useradd -m -u ${UID} -g ${GID} ${USER}
 
-# Grant the developer ownership of Rust tooling caches
-RUN chown -R ${UID}:${GID} /usr/local/cargo /usr/local/rustup
-
-# Create writable target directory for builds
-RUN mkdir -p ${CARGO_TARGET_DIR} && chown -R ${UID}:${GID} ${CARGO_TARGET_DIR}
-
 USER ${USER}
-WORKDIR /app
+WORKDIR /workspace
 
 # Expose Substrate node ports
 EXPOSE 9944 9933 30333
