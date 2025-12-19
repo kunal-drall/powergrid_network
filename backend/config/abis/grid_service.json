@@ -1,0 +1,3909 @@
+{
+  "source": {
+    "hash": "0x2e5e8134a84d1d8df3d379df1467a68ceab4a3b006df49463530b4bb587ed6db",
+    "language": "ink! 5.1.1",
+    "compiler": "rustc 1.90.0",
+    "build_info": {
+      "build_mode": "Release",
+      "cargo_contract_version": "5.0.1",
+      "rust_toolchain": "stable-aarch64-apple-darwin",
+      "wasm_opt_settings": {
+        "keep_debug_symbols": false,
+        "optimization_passes": "Z"
+      }
+    }
+  },
+  "contract": {
+    "name": "grid_service",
+    "version": "0.1.0",
+    "authors": [
+      "Kunal <kunaldrall29@gmail.com>",
+      "Daksh"
+    ]
+  },
+  "image": null,
+  "spec": {
+    "constructors": [
+      {
+        "args": [
+          {
+            "label": "token_address",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "registry_address",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          "Constructor"
+        ],
+        "label": "new",
+        "payable": true,
+        "returnType": {
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 37
+        },
+        "selector": "0x9bae9d5e"
+      }
+    ],
+    "docs": [],
+    "environment": {
+      "accountId": {
+        "displayName": [
+          "AccountId"
+        ],
+        "type": 1
+      },
+      "balance": {
+        "displayName": [
+          "Balance"
+        ],
+        "type": 5
+      },
+      "blockNumber": {
+        "displayName": [
+          "BlockNumber"
+        ],
+        "type": 6
+      },
+      "chainExtension": {
+        "displayName": [
+          "ChainExtension"
+        ],
+        "type": 64
+      },
+      "hash": {
+        "displayName": [
+          "Hash"
+        ],
+        "type": 63
+      },
+      "maxEventTopics": 4,
+      "staticBufferSize": 16384,
+      "timestamp": {
+        "displayName": [
+          "Timestamp"
+        ],
+        "type": 4
+      }
+    },
+    "events": [
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "event_type",
+            "type": {
+              "displayName": [
+                "GridEventType"
+              ],
+              "type": 9
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "compensation_rate",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "target_reduction_kw",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "start_time",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "end_time",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "docs": [
+          "Events emitted by the contract"
+        ],
+        "label": "GridEventCreated",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0xf3a65fff1b6722ab0800ee14879a07cf700c00f8d143594bdabacd46c0a548eb"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "participant",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "energy_contributed_wh",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ParticipationRecorded",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0xa5079d250a442e9ca91868a8bc8c44c4565de76e4279df2c64d1859f1d76f847"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "participant",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "reward_earned",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "verified",
+            "type": {
+              "displayName": [
+                "bool"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ParticipationVerified",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0xd2dc5dcd50b91a76c94230027f5d85fc0a0138c0133bd139e2f547c47324f36f"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "participant",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amount",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "docs": [],
+        "label": "RewardPaid",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0x038d4a5d75dcfa046cd9318c73dd968ca64bbf35979bae851fd217fa8352c385"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "timestamp",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "load_mw",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "capacity_mw",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "frequency_hz",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 6
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "load_percentage",
+            "type": {
+              "displayName": [
+                "u8"
+              ],
+              "type": 3
+            }
+          }
+        ],
+        "docs": [
+          "New automation events"
+        ],
+        "label": "GridConditionUpdated",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0x6afc90332391f40f63498172682a13bfaf66b5764cd0b48ad996beab4ea24def"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "rule_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "trigger_reason",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 41
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "load_percentage",
+            "type": {
+              "displayName": [
+                "u8"
+              ],
+              "type": 3
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "frequency_hz",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 6
+            }
+          }
+        ],
+        "docs": [],
+        "label": "AutoEventTriggered",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0x5d57b497b92c9646de3bad7b8bd5634fa5b43e7496606c7ae989fafcac4e0813"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "device",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "old_score",
+            "type": {
+              "displayName": [
+                "u16"
+              ],
+              "type": 26
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "new_score",
+            "type": {
+              "displayName": [
+                "u16"
+              ],
+              "type": 26
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "response_time",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "consistency",
+            "type": {
+              "displayName": [
+                "u8"
+              ],
+              "type": 3
+            }
+          }
+        ],
+        "docs": [],
+        "label": "FlexibilityScoreUpdated",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0x6f83c489eedc9862eb8112e55f016b2f8af90c1d6272ce666cd7cd836f965fd8"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "rule_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "event_type",
+            "type": {
+              "displayName": [
+                "GridEventType"
+              ],
+              "type": 9
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "load_threshold",
+            "type": {
+              "displayName": [
+                "u8"
+              ],
+              "type": 3
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "frequency_low",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 6
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "frequency_high",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 6
+            }
+          }
+        ],
+        "docs": [],
+        "label": "TriggerRuleCreated",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0xad7a80ccfe4c133b98a95c0ce45585b46c47c342ace208186f4d94f72a2c0556"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "total_participants",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 6
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "total_energy_reduced",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "docs": [],
+        "label": "GridEventCompleted",
+        "module_path": "grid_service::grid_service",
+        "signature_topic": "0x394b6c02d535170999f3d85c631fa9c48fc413d22bc140f59dc083ab43ec83e6"
+      }
+    ],
+    "lang_error": {
+      "displayName": [
+        "ink",
+        "LangError"
+      ],
+      "type": 38
+    },
+    "messages": [
+      {
+        "args": [
+          {
+            "label": "event_type",
+            "type": {
+              "displayName": [
+                "GridEventType"
+              ],
+              "type": 9
+            }
+          },
+          {
+            "label": "duration_minutes",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "compensation_rate",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "label": "target_reduction_kw",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Create a new grid event"
+        ],
+        "label": "create_grid_event",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 39
+        },
+        "selector": "0x1f9b3981"
+      },
+      {
+        "args": [
+          {
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "energy_reduction_wh",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Participate in a grid event"
+        ],
+        "label": "participate_in_event",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0xe1894fc5"
+      },
+      {
+        "args": [
+          {
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "participant",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "actual_reduction",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Verify participation and distribute rewards (authorized only)"
+        ],
+        "label": "verify_participation",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0x569acea6"
+      },
+      {
+        "args": [
+          {
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Get grid event details"
+        ],
+        "label": "get_grid_event",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 44
+        },
+        "selector": "0x66f98509"
+      },
+      {
+        "args": [
+          {
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Get event participations"
+        ],
+        "label": "get_event_participations",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 46
+        },
+        "selector": "0xd19c19ac"
+      },
+      {
+        "args": [
+          {
+            "label": "event_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Complete a grid event (authorized only)"
+        ],
+        "label": "complete_grid_event",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0xe248c3d8"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Get active events"
+        ],
+        "label": "get_active_events",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 47
+        },
+        "selector": "0xae2c19e5"
+      },
+      {
+        "args": [
+          {
+            "label": "signal",
+            "type": {
+              "displayName": [
+                "GridSignal"
+              ],
+              "type": 50
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Ingest a grid signal from an oracle/aggregator and create/complete events (authorized only)"
+        ],
+        "label": "ingest_grid_signal",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 52
+        },
+        "selector": "0xfde11a99"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Get default/base compensation rate"
+        ],
+        "label": "get_default_compensation_rate",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 54
+        },
+        "selector": "0xe0b1882d"
+      },
+      {
+        "args": [
+          {
+            "label": "caller",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Add authorized caller (owner only)"
+        ],
+        "label": "add_authorized_caller",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0xeb795b78"
+      },
+      {
+        "args": [
+          {
+            "label": "caller",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Remove authorized caller (owner only)"
+        ],
+        "label": "remove_authorized_caller",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0x535acb74"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Get contract statistics"
+        ],
+        "label": "get_stats",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 55
+        },
+        "selector": "0x0b58aa38"
+      },
+      {
+        "args": [
+          {
+            "label": "new_address",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Update token contract address (owner only)"
+        ],
+        "label": "update_token_address",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0xd45e7b30"
+      },
+      {
+        "args": [
+          {
+            "label": "new_address",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Update registry contract address (owner only)"
+        ],
+        "label": "update_registry_address",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0x3ccfeaac"
+      },
+      {
+        "args": [
+          {
+            "label": "addr",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Set governance address (owner only)"
+        ],
+        "label": "set_governance_address",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0x622a44e4"
+      },
+      {
+        "args": [
+          {
+            "label": "new_rate",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Update the default/base compensation rate (owner or authorized)"
+        ],
+        "label": "update_default_compensation_rate",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0x8d2fc128"
+      },
+      {
+        "args": [
+          {
+            "label": "pause",
+            "type": {
+              "displayName": [
+                "bool"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Pause/unpause admin (owner or governance)"
+        ],
+        "label": "set_paused",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0x4b7659e5"
+      },
+      {
+        "args": [
+          {
+            "label": "load_mw",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "capacity_mw",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "frequency_hz",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 6
+            }
+          },
+          {
+            "label": "voltage_kv",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 6
+            }
+          },
+          {
+            "label": "renewable_percentage",
+            "type": {
+              "displayName": [
+                "u8"
+              ],
+              "type": 3
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Update grid conditions (data feed only)"
+        ],
+        "label": "update_grid_condition",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0xde130aaf"
+      },
+      {
+        "args": [
+          {
+            "label": "params",
+            "type": {
+              "displayName": [
+                "TriggerRuleParams"
+              ],
+              "type": 57
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Create an automatic trigger rule (owner/governance only)"
+        ],
+        "label": "create_trigger_rule",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 39
+        },
+        "selector": "0x0174ed3c"
+      },
+      {
+        "args": [
+          {
+            "label": "device",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "response_time_seconds",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "consistency_percentage",
+            "type": {
+              "displayName": [
+                "u8"
+              ],
+              "type": 3
+            }
+          },
+          {
+            "label": "flexibility_range_kw",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "availability_hours_per_day",
+            "type": {
+              "displayName": [
+                "u8"
+              ],
+              "type": 3
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Update device flexibility score (registry or owner only)"
+        ],
+        "label": "update_flexibility_score",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0xc78e2a95"
+      },
+      {
+        "args": [
+          {
+            "label": "feed_address",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Add authorized data feed address (owner only)"
+        ],
+        "label": "add_data_feed",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0xb62722d8"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Get current grid condition"
+        ],
+        "label": "get_grid_condition",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 58
+        },
+        "selector": "0xb31fbd07"
+      },
+      {
+        "args": [
+          {
+            "label": "device",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Get device flexibility score"
+        ],
+        "label": "get_flexibility_score",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 59
+        },
+        "selector": "0x1f3ec7b8"
+      },
+      {
+        "args": [
+          {
+            "label": "rule_id",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Get trigger rule"
+        ],
+        "label": "get_trigger_rule",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 61
+        },
+        "selector": "0x6749b7be"
+      },
+      {
+        "args": [
+          {
+            "label": "enabled",
+            "type": {
+              "displayName": [
+                "bool"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Enable/disable auto-triggering (owner only)"
+        ],
+        "label": "set_auto_trigger_enabled",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 42
+        },
+        "selector": "0x2804311e"
+      }
+    ]
+  },
+  "storage": {
+    "root": {
+      "layout": {
+        "struct": {
+          "fields": [
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "entered"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "paused"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "owner"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "token_address"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "registry_address"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0x9ea4852d",
+                              "name": "GridEventType",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "DemandResponse"
+                                },
+                                "1": {
+                                  "fields": [],
+                                  "name": "FrequencyRegulation"
+                                },
+                                "2": {
+                                  "fields": [],
+                                  "name": "PeakShaving"
+                                },
+                                "3": {
+                                  "fields": [],
+                                  "name": "LoadBalancing"
+                                },
+                                "4": {
+                                  "fields": [],
+                                  "name": "Emergency"
+                                }
+                              }
+                            }
+                          },
+                          "name": "event_type"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 4
+                            }
+                          },
+                          "name": "duration_minutes"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 5
+                            }
+                          },
+                          "name": "base_compensation_rate"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 4
+                            }
+                          },
+                          "name": "target_reduction_kw"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 4
+                            }
+                          },
+                          "name": "created_at"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 4
+                            }
+                          },
+                          "name": "start_time"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 4
+                            }
+                          },
+                          "name": "end_time"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 0
+                            }
+                          },
+                          "name": "active"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 6
+                            }
+                          },
+                          "name": "total_participants"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 4
+                            }
+                          },
+                          "name": "total_energy_reduced"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x9ea4852d",
+                              "ty": 0
+                            }
+                          },
+                          "name": "completed"
+                        }
+                      ],
+                      "name": "GridEvent"
+                    }
+                  },
+                  "root_key": "0x9ea4852d",
+                  "ty": 7
+                }
+              },
+              "name": "events"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x22ccae48",
+                      "ty": 14
+                    }
+                  },
+                  "root_key": "0x22ccae48",
+                  "ty": 16
+                }
+              },
+              "name": "participations"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "next_event_id"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x8d9853e7",
+                      "ty": 0
+                    }
+                  },
+                  "root_key": "0x8d9853e7",
+                  "ty": 19
+                }
+              },
+              "name": "authorized_callers"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "default_compensation_rate"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "governance_address"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "struct": {
+                              "fields": [
+                                {
+                                  "layout": {
+                                    "leaf": {
+                                      "key": "0x00000000",
+                                      "ty": 4
+                                    }
+                                  },
+                                  "name": "timestamp"
+                                },
+                                {
+                                  "layout": {
+                                    "leaf": {
+                                      "key": "0x00000000",
+                                      "ty": 4
+                                    }
+                                  },
+                                  "name": "load_mw"
+                                },
+                                {
+                                  "layout": {
+                                    "leaf": {
+                                      "key": "0x00000000",
+                                      "ty": 4
+                                    }
+                                  },
+                                  "name": "capacity_mw"
+                                },
+                                {
+                                  "layout": {
+                                    "leaf": {
+                                      "key": "0x00000000",
+                                      "ty": 6
+                                    }
+                                  },
+                                  "name": "frequency_hz"
+                                },
+                                {
+                                  "layout": {
+                                    "leaf": {
+                                      "key": "0x00000000",
+                                      "ty": 6
+                                    }
+                                  },
+                                  "name": "voltage_kv"
+                                },
+                                {
+                                  "layout": {
+                                    "leaf": {
+                                      "key": "0x00000000",
+                                      "ty": 3
+                                    }
+                                  },
+                                  "name": "renewable_percentage"
+                                }
+                              ],
+                              "name": "GridCondition"
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "current_grid_condition"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x7e31e5b5",
+                              "ty": 4
+                            }
+                          },
+                          "name": "rule_id"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x7e31e5b5",
+                              "ty": 0
+                            }
+                          },
+                          "name": "active"
+                        },
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0x7e31e5b5",
+                              "name": "GridEventType",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "DemandResponse"
+                                },
+                                "1": {
+                                  "fields": [],
+                                  "name": "FrequencyRegulation"
+                                },
+                                "2": {
+                                  "fields": [],
+                                  "name": "PeakShaving"
+                                },
+                                "3": {
+                                  "fields": [],
+                                  "name": "LoadBalancing"
+                                },
+                                "4": {
+                                  "fields": [],
+                                  "name": "Emergency"
+                                }
+                              }
+                            }
+                          },
+                          "name": "event_type"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x7e31e5b5",
+                              "ty": 3
+                            }
+                          },
+                          "name": "load_threshold_percentage"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x7e31e5b5",
+                              "ty": 6
+                            }
+                          },
+                          "name": "frequency_low_threshold"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x7e31e5b5",
+                              "ty": 6
+                            }
+                          },
+                          "name": "frequency_high_threshold"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x7e31e5b5",
+                              "ty": 5
+                            }
+                          },
+                          "name": "compensation_rate"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x7e31e5b5",
+                              "ty": 3
+                            }
+                          },
+                          "name": "target_reduction_percentage"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x7e31e5b5",
+                              "ty": 4
+                            }
+                          },
+                          "name": "duration_minutes"
+                        }
+                      ],
+                      "name": "AutoTriggerRule"
+                    }
+                  },
+                  "root_key": "0x7e31e5b5",
+                  "ty": 22
+                }
+              },
+              "name": "trigger_rules"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "next_rule_id"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x0cbea0ae",
+                              "ty": 1
+                            }
+                          },
+                          "name": "device"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x0cbea0ae",
+                              "ty": 4
+                            }
+                          },
+                          "name": "response_time_seconds"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x0cbea0ae",
+                              "ty": 3
+                            }
+                          },
+                          "name": "consistency_percentage"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x0cbea0ae",
+                              "ty": 4
+                            }
+                          },
+                          "name": "flexibility_range_kw"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x0cbea0ae",
+                              "ty": 3
+                            }
+                          },
+                          "name": "availability_hours_per_day"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x0cbea0ae",
+                              "ty": 26
+                            }
+                          },
+                          "name": "total_score"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x0cbea0ae",
+                              "ty": 4
+                            }
+                          },
+                          "name": "last_updated"
+                        }
+                      ],
+                      "name": "FlexibilityScore"
+                    }
+                  },
+                  "root_key": "0x0cbea0ae",
+                  "ty": 27
+                }
+              },
+              "name": "flexibility_scores"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x20a78656",
+                      "ty": 0
+                    }
+                  },
+                  "root_key": "0x20a78656",
+                  "ty": 31
+                }
+              },
+              "name": "data_feed_addresses"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "auto_trigger_enabled"
+            }
+          ],
+          "name": "GridService"
+        }
+      },
+      "root_key": "0x00000000",
+      "ty": 34
+    }
+  },
+  "types": [
+    {
+      "id": 0,
+      "type": {
+        "def": {
+          "primitive": "bool"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 2,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "AccountId"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "type": {
+        "def": {
+          "array": {
+            "len": 32,
+            "type": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": {
+        "def": {
+          "primitive": "u8"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": {
+        "def": {
+          "primitive": "u64"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": {
+        "def": {
+          "primitive": "u128"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": {
+        "def": {
+          "primitive": "u32"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "K",
+            "type": 4
+          },
+          {
+            "name": "V",
+            "type": 8
+          },
+          {
+            "name": "KeyType",
+            "type": 10
+          }
+        ],
+        "path": [
+          "ink_storage",
+          "lazy",
+          "mapping",
+          "Mapping"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "event_type",
+                "type": 9,
+                "typeName": "GridEventType"
+              },
+              {
+                "name": "duration_minutes",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "base_compensation_rate",
+                "type": 5,
+                "typeName": "Balance"
+              },
+              {
+                "name": "target_reduction_kw",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "created_at",
+                "type": 4,
+                "typeName": "Timestamp"
+              },
+              {
+                "name": "start_time",
+                "type": 4,
+                "typeName": "Timestamp"
+              },
+              {
+                "name": "end_time",
+                "type": 4,
+                "typeName": "Timestamp"
+              },
+              {
+                "name": "active",
+                "type": 0,
+                "typeName": "bool"
+              },
+              {
+                "name": "total_participants",
+                "type": 6,
+                "typeName": "u32"
+              },
+              {
+                "name": "total_energy_reduced",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "completed",
+                "type": 0,
+                "typeName": "bool"
+              }
+            ]
+          }
+        },
+        "path": [
+          "powergrid_shared",
+          "types",
+          "GridEvent"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "DemandResponse"
+              },
+              {
+                "index": 1,
+                "name": "FrequencyRegulation"
+              },
+              {
+                "index": 2,
+                "name": "PeakShaving"
+              },
+              {
+                "index": 3,
+                "name": "LoadBalancing"
+              },
+              {
+                "index": 4,
+                "name": "Emergency"
+              }
+            ]
+          }
+        },
+        "path": [
+          "powergrid_shared",
+          "types",
+          "GridEventType"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "L",
+            "type": 11
+          },
+          {
+            "name": "R",
+            "type": 12
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ResolverKey"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "AutoKey"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "ParentKey",
+            "type": 13
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ManualKey"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
+          "tuple": []
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 15
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "participant",
+                "type": 2,
+                "typeName": "[u8; 32]"
+              },
+              {
+                "name": "energy_contributed_wh",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "participation_start",
+                "type": 4,
+                "typeName": "Timestamp"
+              },
+              {
+                "name": "participation_end",
+                "type": 4,
+                "typeName": "Timestamp"
+              },
+              {
+                "name": "reward_earned",
+                "type": 5,
+                "typeName": "Balance"
+              },
+              {
+                "name": "verified",
+                "type": 0,
+                "typeName": "bool"
+              },
+              {
+                "name": "paid",
+                "type": 0,
+                "typeName": "bool"
+              }
+            ]
+          }
+        },
+        "path": [
+          "powergrid_shared",
+          "types",
+          "Participation"
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "K",
+            "type": 4
+          },
+          {
+            "name": "V",
+            "type": 14
+          },
+          {
+            "name": "KeyType",
+            "type": 17
+          }
+        ],
+        "path": [
+          "ink_storage",
+          "lazy",
+          "mapping",
+          "Mapping"
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "L",
+            "type": 11
+          },
+          {
+            "name": "R",
+            "type": 18
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ResolverKey"
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "ParentKey",
+            "type": 13
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ManualKey"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "K",
+            "type": 1
+          },
+          {
+            "name": "V",
+            "type": 0
+          },
+          {
+            "name": "KeyType",
+            "type": 20
+          }
+        ],
+        "path": [
+          "ink_storage",
+          "lazy",
+          "mapping",
+          "Mapping"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "L",
+            "type": 11
+          },
+          {
+            "name": "R",
+            "type": 21
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ResolverKey"
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "ParentKey",
+            "type": 13
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ManualKey"
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "K",
+            "type": 4
+          },
+          {
+            "name": "V",
+            "type": 23
+          },
+          {
+            "name": "KeyType",
+            "type": 24
+          }
+        ],
+        "path": [
+          "ink_storage",
+          "lazy",
+          "mapping",
+          "Mapping"
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "rule_id",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "active",
+                "type": 0,
+                "typeName": "bool"
+              },
+              {
+                "name": "event_type",
+                "type": 9,
+                "typeName": "GridEventType"
+              },
+              {
+                "name": "load_threshold_percentage",
+                "type": 3,
+                "typeName": "u8"
+              },
+              {
+                "name": "frequency_low_threshold",
+                "type": 6,
+                "typeName": "u32"
+              },
+              {
+                "name": "frequency_high_threshold",
+                "type": 6,
+                "typeName": "u32"
+              },
+              {
+                "name": "compensation_rate",
+                "type": 5,
+                "typeName": "Balance"
+              },
+              {
+                "name": "target_reduction_percentage",
+                "type": 3,
+                "typeName": "u8"
+              },
+              {
+                "name": "duration_minutes",
+                "type": 4,
+                "typeName": "u64"
+              }
+            ]
+          }
+        },
+        "path": [
+          "grid_service",
+          "grid_service",
+          "AutoTriggerRule"
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "L",
+            "type": 11
+          },
+          {
+            "name": "R",
+            "type": 25
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ResolverKey"
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "ParentKey",
+            "type": 13
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ManualKey"
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "type": {
+        "def": {
+          "primitive": "u16"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "K",
+            "type": 1
+          },
+          {
+            "name": "V",
+            "type": 28
+          },
+          {
+            "name": "KeyType",
+            "type": 29
+          }
+        ],
+        "path": [
+          "ink_storage",
+          "lazy",
+          "mapping",
+          "Mapping"
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "device",
+                "type": 1,
+                "typeName": "AccountId"
+              },
+              {
+                "name": "response_time_seconds",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "consistency_percentage",
+                "type": 3,
+                "typeName": "u8"
+              },
+              {
+                "name": "flexibility_range_kw",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "availability_hours_per_day",
+                "type": 3,
+                "typeName": "u8"
+              },
+              {
+                "name": "total_score",
+                "type": 26,
+                "typeName": "u16"
+              },
+              {
+                "name": "last_updated",
+                "type": 4,
+                "typeName": "u64"
+              }
+            ]
+          }
+        },
+        "path": [
+          "grid_service",
+          "grid_service",
+          "FlexibilityScore"
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "L",
+            "type": 11
+          },
+          {
+            "name": "R",
+            "type": 30
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ResolverKey"
+        ]
+      }
+    },
+    {
+      "id": 30,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "ParentKey",
+            "type": 13
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ManualKey"
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "K",
+            "type": 1
+          },
+          {
+            "name": "V",
+            "type": 0
+          },
+          {
+            "name": "KeyType",
+            "type": 32
+          }
+        ],
+        "path": [
+          "ink_storage",
+          "lazy",
+          "mapping",
+          "Mapping"
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "L",
+            "type": 11
+          },
+          {
+            "name": "R",
+            "type": 33
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ResolverKey"
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "ParentKey",
+            "type": 13
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ManualKey"
+        ]
+      }
+    },
+    {
+      "id": 34,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "entered",
+                "type": 0,
+                "typeName": "<bool as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<2956109628u32, ()>,>>::Type"
+              },
+              {
+                "name": "paused",
+                "type": 0,
+                "typeName": "<bool as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<2196062314u32, ()>,>>::Type"
+              },
+              {
+                "name": "owner",
+                "type": 1,
+                "typeName": "<AccountId as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<1543244290u32, ()>,>>::Type"
+              },
+              {
+                "name": "token_address",
+                "type": 1,
+                "typeName": "<AccountId as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<1948024738u32, ()>,>>::Type"
+              },
+              {
+                "name": "registry_address",
+                "type": 1,
+                "typeName": "<AccountId as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<3737944414u32, ()>,>>::Type"
+              },
+              {
+                "name": "events",
+                "type": 7,
+                "typeName": "<Mapping<u64, GridEvent> as::ink::storage::traits::\nAutoStorableHint<::ink::storage::traits::ManualKey<763733150u32, ()\n>,>>::Type"
+              },
+              {
+                "name": "participations",
+                "type": 16,
+                "typeName": "<Mapping<u64, Vec<Participation>> as::ink::storage::traits::\nAutoStorableHint<::ink::storage::traits::ManualKey<1219415074u32,\n()>,>>::Type"
+              },
+              {
+                "name": "next_event_id",
+                "type": 4,
+                "typeName": "<u64 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<104142648u32, ()>,>>::Type"
+              },
+              {
+                "name": "authorized_callers",
+                "type": 19,
+                "typeName": "<Mapping<AccountId, bool> as::ink::storage::traits::\nAutoStorableHint<::ink::storage::traits::ManualKey<3881015437u32,\n()>,>>::Type"
+              },
+              {
+                "name": "default_compensation_rate",
+                "type": 5,
+                "typeName": "<Balance as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<2341811611u32, ()>,>>::Type"
+              },
+              {
+                "name": "governance_address",
+                "type": 1,
+                "typeName": "<AccountId as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<3984527917u32, ()>,>>::Type"
+              },
+              {
+                "name": "current_grid_condition",
+                "type": 35,
+                "typeName": "<Option<GridCondition> as::ink::storage::traits::AutoStorableHint\n<::ink::storage::traits::ManualKey<1587600466u32, ()>,>>::Type"
+              },
+              {
+                "name": "trigger_rules",
+                "type": 22,
+                "typeName": "<Mapping<u64, AutoTriggerRule> as::ink::storage::traits::\nAutoStorableHint<::ink::storage::traits::ManualKey<3051696510u32,\n()>,>>::Type"
+              },
+              {
+                "name": "next_rule_id",
+                "type": 4,
+                "typeName": "<u64 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<2492685917u32, ()>,>>::Type"
+              },
+              {
+                "name": "flexibility_scores",
+                "type": 27,
+                "typeName": "<Mapping<AccountId, FlexibilityScore> as::ink::storage::traits::\nAutoStorableHint<::ink::storage::traits::ManualKey<2929769996u32,\n()>,>>::Type"
+              },
+              {
+                "name": "data_feed_addresses",
+                "type": 31,
+                "typeName": "<Mapping<AccountId, bool> as::ink::storage::traits::\nAutoStorableHint<::ink::storage::traits::ManualKey<1451665184u32,\n()>,>>::Type"
+              },
+              {
+                "name": "auto_trigger_enabled",
+                "type": 0,
+                "typeName": "<bool as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<93285315u32, ()>,>>::Type"
+              }
+            ]
+          }
+        },
+        "path": [
+          "grid_service",
+          "grid_service",
+          "GridService"
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 36
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 36
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 36,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "timestamp",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "load_mw",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "capacity_mw",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "frequency_hz",
+                "type": 6,
+                "typeName": "u32"
+              },
+              {
+                "name": "voltage_kv",
+                "type": 6,
+                "typeName": "u32"
+              },
+              {
+                "name": "renewable_percentage",
+                "type": 3,
+                "typeName": "u8"
+              }
+            ]
+          }
+        },
+        "path": [
+          "grid_service",
+          "grid_service",
+          "GridCondition"
+        ]
+      }
+    },
+    {
+      "id": 37,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 13
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 13
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 1,
+                "name": "CouldNotReadInput"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "LangError"
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 40
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 40
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 40,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 4
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 41
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 4
+          },
+          {
+            "name": "E",
+            "type": 41
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 41,
+      "type": {
+        "def": {
+          "primitive": "str"
+        }
+      }
+    },
+    {
+      "id": 42,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 43
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 43
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 43,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 13
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 41
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 13
+          },
+          {
+            "name": "E",
+            "type": 41
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 44,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 45
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 45
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 45,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 8
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 46,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 14
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 14
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 47,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 48
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 48
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 48,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 49
+          }
+        }
+      }
+    },
+    {
+      "id": 49,
+      "type": {
+        "def": {
+          "tuple": [
+            4,
+            8
+          ]
+        }
+      }
+    },
+    {
+      "id": 50,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "event_type",
+                "type": 9,
+                "typeName": "GridEventType"
+              },
+              {
+                "name": "duration_minutes",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "target_reduction_kw",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "severity",
+                "type": 3,
+                "typeName": "u8"
+              },
+              {
+                "name": "start",
+                "type": 0,
+                "typeName": "bool"
+              },
+              {
+                "name": "complete_event_id",
+                "type": 51,
+                "typeName": "Option<u64>"
+              }
+            ]
+          }
+        },
+        "path": [
+          "powergrid_shared",
+          "types",
+          "GridSignal"
+        ]
+      }
+    },
+    {
+      "id": 51,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 4
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 4
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 52,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 53
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 53
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 53,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 51
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 41
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 51
+          },
+          {
+            "name": "E",
+            "type": 41
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 54,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 5
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 55,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 56
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 56
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 56,
+      "type": {
+        "def": {
+          "tuple": [
+            4,
+            4
+          ]
+        }
+      }
+    },
+    {
+      "id": 57,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "event_type",
+                "type": 9,
+                "typeName": "GridEventType"
+              },
+              {
+                "name": "load_threshold_percentage",
+                "type": 3,
+                "typeName": "u8"
+              },
+              {
+                "name": "frequency_low_threshold",
+                "type": 6,
+                "typeName": "u32"
+              },
+              {
+                "name": "frequency_high_threshold",
+                "type": 6,
+                "typeName": "u32"
+              },
+              {
+                "name": "compensation_rate",
+                "type": 5,
+                "typeName": "Balance"
+              },
+              {
+                "name": "target_reduction_percentage",
+                "type": 3,
+                "typeName": "u8"
+              },
+              {
+                "name": "duration_minutes",
+                "type": 4,
+                "typeName": "u64"
+              }
+            ]
+          }
+        },
+        "path": [
+          "grid_service",
+          "grid_service",
+          "TriggerRuleParams"
+        ]
+      }
+    },
+    {
+      "id": 58,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 35
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 35
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 59,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 60
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 60
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 60,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 28
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 28
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 61,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 62
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 38
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 62
+          },
+          {
+            "name": "E",
+            "type": 38
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 62,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 23
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 23
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 63,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 2,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "Hash"
+        ]
+      }
+    },
+    {
+      "id": 64,
+      "type": {
+        "def": {
+          "variant": {}
+        },
+        "path": [
+          "ink_env",
+          "types",
+          "NoChainExtension"
+        ]
+      }
+    }
+  ],
+  "version": 5
+}

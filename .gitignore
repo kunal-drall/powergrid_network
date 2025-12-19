@@ -29,9 +29,9 @@ npm-debug.log*
 **/.pytest_cache/
 **/.tox/
 
-# Backend config (generated ABIs and cache)
-backend/config/
-**/backend/config/
+# Backend generated files (cache only)
+# Allow config/ but ignore __pycache__
+backend/config/__pycache__/
 
 # Logs
 *.log

@@ -478,13 +478,18 @@ pub mod resource_registry {
         use ink::env::test::{default_accounts, set_caller, set_value_transferred, DefaultAccounts};
         use ink::env::DefaultEnvironment;
 
+        // Helper: 1 token in native units (10^12)
+        const ONE_TOKEN: u128 = 1_000_000_000_000;
+
         #[ink::test]
         fn test_device_registration_success() {
             let accounts: DefaultAccounts<DefaultEnvironment> = default_accounts();
-            let mut registry = ResourceRegistry::new(1000);
+            // Use 1 token as min_stake (will be converted to 10^12 native units)
+            let mut registry = ResourceRegistry::new(1);
 
             set_caller::<DefaultEnvironment>(accounts.alice);
-            set_value_transferred::<DefaultEnvironment>(1500);
+            // Send 2 tokens worth of native units (meets min_stake of 1 token)
+            set_value_transferred::<DefaultEnvironment>(2 * ONE_TOKEN);
 
             let metadata = DeviceMetadata {
                 device_type: DeviceType::SmartPlug,
@@ -505,10 +510,12 @@ pub mod resource_registry {
         #[ink::test]
         fn test_device_registration_insufficient_stake() {
             let accounts: DefaultAccounts<DefaultEnvironment> = default_accounts();
-            let mut registry = ResourceRegistry::new(1000);
+            // Use 1 token as min_stake
+            let mut registry = ResourceRegistry::new(1);
 
             set_caller::<DefaultEnvironment>(accounts.alice);
-            set_value_transferred::<DefaultEnvironment>(500); // Below minimum
+            // Send less than 1 token (insufficient)
+            set_value_transferred::<DefaultEnvironment>(ONE_TOKEN / 2);
 
             let metadata = DeviceMetadata {
                 device_type: DeviceType::SmartPlug,
@@ -528,11 +535,11 @@ pub mod resource_registry {
         #[ink::test]
         fn test_device_deactivation() {
             let accounts: DefaultAccounts<DefaultEnvironment> = default_accounts();
-            let mut registry = ResourceRegistry::new(1000);
+            let mut registry = ResourceRegistry::new(1);
 
             // Register device first
             set_caller::<DefaultEnvironment>(accounts.alice);
-            set_value_transferred::<DefaultEnvironment>(1500);
+            set_value_transferred::<DefaultEnvironment>(2 * ONE_TOKEN);
 
             let metadata = DeviceMetadata {
                 device_type: DeviceType::SmartPlug,
@@ -558,11 +565,11 @@ pub mod resource_registry {
         #[ink::test]
         fn test_stake_increase() {
             let accounts: DefaultAccounts<DefaultEnvironment> = default_accounts();
-            let mut registry = ResourceRegistry::new(1000);
+            let mut registry = ResourceRegistry::new(1);
 
             // Register device first
             set_caller::<DefaultEnvironment>(accounts.alice);
-            set_value_transferred::<DefaultEnvironment>(1500);
+            set_value_transferred::<DefaultEnvironment>(2 * ONE_TOKEN);
 
             let metadata = DeviceMetadata {
                 device_type: DeviceType::SmartPlug,
@@ -576,18 +583,19 @@ pub mod resource_registry {
 
             let _ = registry.register_device(metadata);
 
-            // Increase stake
-            set_value_transferred::<DefaultEnvironment>(500);
+            // Increase stake by 1 token
+            set_value_transferred::<DefaultEnvironment>(ONE_TOKEN);
             let result = registry.increase_stake();
             assert!(result.is_ok());
 
-            assert_eq!(registry.get_device_stake(accounts.alice), Some(2000));
+            // Should now have 3 tokens worth
+            assert_eq!(registry.get_device_stake(accounts.alice), Some(3 * ONE_TOKEN));
         }
 
         #[ink::test]
         fn test_authorized_caller_management() {
             let accounts: DefaultAccounts<DefaultEnvironment> = default_accounts();
-            let mut registry = ResourceRegistry::new(1000);
+            let mut registry = ResourceRegistry::new(1);
 
             // Add authorized caller
             let result = registry.add_authorized_caller(accounts.bob);

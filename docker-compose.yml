@@ -2,28 +2,55 @@ services:
   node:
     build:
       context: .
-      platform: linux/arm64
-    working_dir: /app
+    platform: linux/arm64
+    container_name: powergrid-node
+    working_dir: /workspace
     command: substrate-contracts-node --dev --tmp --rpc-external --rpc-cors all --unsafe-rpc-external
     ports:
-      - "9944:9944"  # WS/RPC
-      - "9933:9933"  # HTTP RPC
-      - "30333:30333"  # P2P
+      - "9944:9944"
+      - "9933:9933"
+      - "30333:30333"
     volumes:
-      - .:/app  # Sync code changes
-    restart: unless-stopped  # Keeps running in background
+      - .:/workspace
+    networks:
+      - powergrid-network
+    restart: unless-stopped
 
   tester:
     build:
       context: .
-      platform: linux/arm64
+    platform: linux/arm64
+    container_name: powergrid-tester
     depends_on:
       - node
-    working_dir: /app
+    working_dir: /workspace
     volumes:
-      - .:/app  # Sync code changes
+      - .:/workspace
     environment:
-      - CONTRACTS_NODE=ws://node:9944
+      - CONTRACTS_NODE=ws://powergrid-node:9944
+      - NODE_URL=ws://powergrid-node:9944
+    networks:
+      - powergrid-network
     stdin_open: true
     tty: true
-    command: bash  # Interactive shell for running commands
+    command: bash
+
+  # Monolithic container - runs node + deploy in one container
+  monolithic:
+    build:
+      context: .
+    platform: linux/arm64
+    container_name: powergrid-monolithic
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    ports:
+      - "9944:9944"
+      - "9933:9933"
+    networks:
+      - powergrid-network
+    command: bash -c "./scripts/docker-monolithic-test.sh"
+
+networks:
+  powergrid-network:
+    driver: bridge

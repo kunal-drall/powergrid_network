@@ -7,7 +7,6 @@ import os
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from tapo_monitor import TapoMonitor
 from blockchain_client import BlockchainClient
 from config.config import Config
 
@@ -50,13 +49,9 @@ class PowerGridOracle:
             logger.error(f"❌ Configuration error: {e}")
             return False
         
-        # Initialize Tapo Monitor
+        # Initialize Tapo Monitor (uses mock or real based on USE_MOCK_DEVICE config)
         logger.info("\n📡 Initializing Tapo Monitor...")
-        self.tapo_monitor = TapoMonitor(
-            Config.TAPO_EMAIL,
-            Config.TAPO_PASSWORD,
-            Config.TAPO_DEVICE_IP
-        )
+        self.tapo_monitor = Config.get_tapo_monitor()
         
         if not await self.tapo_monitor.connect():
             logger.warning("⚠️  Failed to connect to Tapo device - will retry in monitoring loop")
@@ -215,7 +210,7 @@ class PowerGridOracle:
         """Main monitoring loop"""
         logger.info("\n" + "=" * 60)
         logger.info("🔄 Starting monitoring loop...")
-        logger.info(f"⏱️  Interval: {Config.MONITORING_INTERVAL} seconds")
+        logger.info(f"⏱️  Interval: {Config.MONITORING_INTERVAL_SECONDS} seconds")
         logger.info("=" * 60)
         
         iteration = 0
@@ -248,7 +243,7 @@ class PowerGridOracle:
                     if not self.tapo_monitor.device:
                         logger.info("   Attempting to reconnect to Tapo device...")
                         await self.tapo_monitor.connect()
-                    await asyncio.sleep(Config.MONITORING_INTERVAL)
+                    await asyncio.sleep(Config.MONITORING_INTERVAL_SECONDS)
                     continue
                 
                 # Log current stats
@@ -258,7 +253,7 @@ class PowerGridOracle:
                 except (KeyError, TypeError) as e:
                     logger.error(f"Error parsing snapshot data: {e}")
                     logger.warning("⚠️  Invalid snapshot data - will retry next iteration")
-                    await asyncio.sleep(Config.MONITORING_INTERVAL)
+                    await asyncio.sleep(Config.MONITORING_INTERVAL_SECONDS)
                     continue
                 
                 logger.info(f"⚡ Current Power: {current_power:.2f} W")
@@ -283,8 +278,8 @@ class PowerGridOracle:
                     logger.info(f"💰 PWGD Balance: 0 tokens")
                 
                 # Wait before next iteration
-                logger.info(f"\n⏳ Waiting {Config.MONITORING_INTERVAL} seconds...")
-                await asyncio.sleep(Config.MONITORING_INTERVAL)
+                logger.info(f"\n⏳ Waiting {Config.MONITORING_INTERVAL_SECONDS} seconds...")
+                await asyncio.sleep(Config.MONITORING_INTERVAL_SECONDS)
                 
             except KeyboardInterrupt:
                 logger.info("\n⚠️  Interrupt received, shutting down...")
@@ -292,7 +287,7 @@ class PowerGridOracle:
                 
             except Exception as e:
                 logger.error(f"❌ Error in monitoring loop: {e}", exc_info=True)
-                await asyncio.sleep(Config.MONITORING_INTERVAL)
+                await asyncio.sleep(Config.MONITORING_INTERVAL_SECONDS)
     
     async def start(self):
         """Start the oracle service"""
