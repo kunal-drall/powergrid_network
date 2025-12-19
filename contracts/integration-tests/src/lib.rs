@@ -416,7 +416,9 @@ mod test_helpers {
         }
     }
 
-    pub const TEST_MIN_STAKE: u128 = 1_000_000_000_000;
+    // Provided in whole tokens (not native units). ResourceRegistry::new will convert
+    // to native by multiplying with SUBSTRATE_UNIT (10^12), so use 1 token here.
+    pub const TEST_MIN_STAKE: u128 = 1;
     pub const TEST_DEVICE_STAKE: u128 = 2_000_000_000_000;
     pub const TEST_INITIAL_SUPPLY: u128 = 1_000_000_000_000_000_000_000;
 }

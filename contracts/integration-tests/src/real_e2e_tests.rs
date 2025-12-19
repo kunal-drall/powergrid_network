@@ -41,10 +41,8 @@ where
     println!("✅ PowerGrid Token contract deployed successfully");
     println!("   Contract address: {:?}", token_account);
 
-    // Deploy ResourceRegistry contract
-    let mut registry_constructor = ResourceRegistryRef::new(
-        1_000_000_000_000_000_000u128, // 1 token minimum stake
-    );
+    // Deploy ResourceRegistry contract (min_stake provided in whole tokens)
+    let mut registry_constructor = ResourceRegistryRef::new(TEST_MIN_STAKE);
     
     let registry_result = client
         .instantiate("resource_registry", &ink_e2e::alice(), &mut registry_constructor)

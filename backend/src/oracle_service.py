@@ -8,6 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from tapo_monitor import TapoMonitor
+from mock_tapo_device import MockTapoDevice
 from blockchain_client import BlockchainClient
 from config.config import Config
 
@@ -50,17 +51,21 @@ class PowerGridOracle:
             logger.error(f"❌ Configuration error: {e}")
             return False
         
-        # Initialize Tapo Monitor
-        logger.info("\n📡 Initializing Tapo Monitor...")
-        self.tapo_monitor = TapoMonitor(
-            Config.TAPO_EMAIL,
-            Config.TAPO_PASSWORD,
-            Config.TAPO_DEVICE_IP
-        )
-        
-        if not await self.tapo_monitor.connect():
-            logger.warning("⚠️  Failed to connect to Tapo device - will retry in monitoring loop")
-            # Don't fail completely, allow retries
+        # Initialize Tapo Monitor (real or mock)
+        logger.info("\n📡 Initializing Tapo Monitor (%s mode)...", "mock" if Config.USE_MOCK_TAPO else "hardware")
+        if Config.USE_MOCK_TAPO:
+            self.tapo_monitor = MockTapoDevice(profile=Config.MOCK_TAPO_PROFILE)
+            # Mock connect always succeeds
+            await self.tapo_monitor.connect()
+        else:
+            self.tapo_monitor = TapoMonitor(
+                Config.TAPO_EMAIL,
+                Config.TAPO_PASSWORD,
+                Config.TAPO_DEVICE_IP
+            )
+            if not await self.tapo_monitor.connect():
+                logger.warning("⚠️  Failed to connect to Tapo device - will retry in monitoring loop")
+                # Don't fail completely, allow retries
         
         # Initialize Blockchain Client
         logger.info("\n⛓️  Initializing Blockchain Client...")
@@ -137,46 +142,57 @@ class PowerGridOracle:
             logger.info(f"📢 Found {len(active_events)} active event(s)")
             
             # For each active event
-            # Events are returned as tuples: (event_id, GridEvent)
             for idx, event in enumerate(active_events):
-                # Handle tuple format: (event_id, GridEvent)
-                if isinstance(event, (list, tuple)) and len(event) >= 2:
-                    event_id = event[0]
-                    event_data = event[1]
+                event_id = idx
+                event_data = event
+
+                # Handle tuple/list format: (event_id, GridEvent)
+                if isinstance(event, (list, tuple)):
+                    if len(event) >= 2:
+                        event_id = event[0]
+                        event_data = event[1]
+                    elif len(event) == 1:
+                        event_data = event[0]
                 elif isinstance(event, dict):
-                    event_id = event.get('event_id', idx)
-                    event_data = event
-                else:
-                    logger.warning(f"Unexpected event format: {type(event)}, value: {event}")
+                    event_id = event.get('event_id', event.get('id', event.get('key', idx)))
+                    event_data = event.get('event', event.get('value', event))
+
+                # Unwrap ink! Ok/Err structures if present
+                if isinstance(event_data, dict) and 'Ok' in event_data:
+                    event_data = event_data['Ok']
+                if isinstance(event_data, dict) and 'Err' in event_data:
+                    logger.warning(f"Event {event_id} returned Err: {event_data['Err']}")
+                    continue
+
+                # Normalize event_id into int when possible
+                try:
+                    event_id = int(event_id)
+                except (TypeError, ValueError):
                     event_id = idx
-                    event_data = {}
-                
+
                 # Extract event info from GridEvent struct
-                # GridEvent has: event_type, target_reduction_kw, base_compensation_rate, etc.
+                # GridEvent has: event_type, duration_minutes, base_compensation_rate, target_reduction_kw, ...
                 event_type = 'Unknown'
                 target_reduction = 0
                 compensation_rate = 0
                 
                 # Handle different data structures
                 if isinstance(event_data, dict):
-                    # Direct dict access
                     event_type = event_data.get('event_type', 'Unknown')
-                    target_reduction = event_data.get('target_reduction_kw', 0)
-                    compensation_rate = event_data.get('base_compensation_rate', 0)
+                    target_reduction = event_data.get('target_reduction_kw', event_data.get('target_reduction', 0))
+                    compensation_rate = event_data.get('base_compensation_rate', event_data.get('compensation_rate', 0))
                 elif hasattr(event_data, '__dict__'):
-                    # Object with attributes
                     event_type = getattr(event_data, 'event_type', 'Unknown')
-                    target_reduction = getattr(event_data, 'target_reduction_kw', 0)
-                    compensation_rate = getattr(event_data, 'base_compensation_rate', 0)
-                elif isinstance(event_data, (list, tuple)) and len(event_data) >= 3:
-                    # Tuple/list format: (event_type, target_reduction_kw, base_compensation_rate, ...)
-                    event_type = event_data[0] if len(event_data) > 0 else 'Unknown'
-                    target_reduction = event_data[2] if len(event_data) > 2 else 0
-                    compensation_rate = event_data[1] if len(event_data) > 1 else 0
+                    target_reduction = getattr(event_data, 'target_reduction_kw', getattr(event_data, 'target_reduction', 0))
+                    compensation_rate = getattr(event_data, 'base_compensation_rate', getattr(event_data, 'compensation_rate', 0))
+                elif isinstance(event_data, (list, tuple)):
+                    seq = list(event_data)
+                    event_type = seq[0] if len(seq) > 0 else 'Unknown'
+                    compensation_rate = seq[2] if len(seq) > 2 else (seq[1] if len(seq) > 1 else 0)
+                    target_reduction = seq[3] if len(seq) > 3 else (seq[2] if len(seq) > 2 else 0)
                 
                 # Handle event_type enum (could be dict like {'DemandResponse': None} or string)
                 if isinstance(event_type, dict):
-                    # Extract enum variant name
                     event_type_str = list(event_type.keys())[0] if event_type else 'Unknown'
                 else:
                     event_type_str = str(event_type)
@@ -231,21 +247,23 @@ class PowerGridOracle:
                 # 1. Get device snapshot (with retry logic)
                 logger.info("1️⃣  Reading Tapo device data...")
                 snapshot = None
-                
-                # Retry connection if needed
-                if not self.tapo_monitor.device:
+
+                monitor_has_device_attr = hasattr(self.tapo_monitor, "device")
+                monitor_ready = True
+
+                # Retry connection if needed for real hardware monitor
+                if monitor_has_device_attr and not getattr(self.tapo_monitor, "device"):
                     logger.info("   Reconnecting to Tapo device...")
                     await self.tapo_monitor.connect()
-                
-                if self.tapo_monitor.device:
+                    monitor_ready = bool(getattr(self.tapo_monitor, "device"))
+
+                if monitor_ready:
                     snapshot = await self.tapo_monitor.get_complete_snapshot()
-                else:
-                    snapshot = None
-                
+
                 if not snapshot:
                     logger.warning("⚠️  Failed to get device snapshot - will retry next iteration")
-                    # Try to reconnect
-                    if not self.tapo_monitor.device:
+                    # Try to reconnect for hardware path
+                    if monitor_has_device_attr and not getattr(self.tapo_monitor, "device"):
                         logger.info("   Attempting to reconnect to Tapo device...")
                         await self.tapo_monitor.connect()
                     await asyncio.sleep(Config.MONITORING_INTERVAL)

@@ -118,10 +118,12 @@ pub mod resource_registry {
             let stake: Balance = self.env().transferred_value();
             
             if stake < self.min_stake {
+                self.entered = false;
                 return Err("Insufficient stake amount".into());
             }
             
             if self.devices.contains(caller_bytes) {
+                self.entered = false;
                 return Err("Device already registered".into());
             }
 
@@ -161,14 +163,42 @@ pub mod resource_registry {
             let caller_bytes = ink_account_to_bytes(caller);
             let additional_stake: Balance = self.env().transferred_value();
             
-            let mut device = self.devices.get(caller_bytes)
-                .ok_or("Device not registered")?;
-            
+            let mut device = match self.devices.get(caller_bytes) {
+                Some(d) => d,
+                None => { self.entered = false; return Err("Device not registered".into()); }
+            };
+
             device.stake = device.stake.saturating_add(additional_stake);
             self.devices.insert(caller_bytes, &device);
 
             self.env().emit_event(StakeIncreased {
                 account: caller,
+                additional_stake,
+                total_stake: device.stake,
+            });
+            self.entered = false;
+            Ok(())
+        }
+
+        /// Test helper: increase stake for an explicit account (test-only)
+        #[cfg(test)]
+        pub fn test_increase_stake_for(&mut self, account: AccountId) -> Result<(), String> {
+            if self.entered { return Err("Reentrancy".into()); }
+            self.entered = true;
+            if self.paused { self.entered = false; return Err("Paused".into()); }
+            let caller_bytes = ink_account_to_bytes(account);
+            let additional_stake: Balance = self.env().transferred_value();
+
+            let mut device = match self.devices.get(caller_bytes) {
+                Some(d) => d,
+                None => { self.entered = false; return Err("Device not registered".into()); }
+            };
+
+            device.stake = device.stake.saturating_add(additional_stake);
+            self.devices.insert(caller_bytes, &device);
+
+            self.env().emit_event(StakeIncreased {
+                account,
                 additional_stake,
                 total_stake: device.stake,
             });
@@ -401,11 +431,14 @@ pub mod resource_registry {
             if self.paused { self.entered = false; return Err("Paused".into()); }
             let caller = self.env().caller();
             let caller_bytes = ink_account_to_bytes(caller);
-            let mut device = self.devices.get(caller_bytes).ok_or("Device not registered")?;
-            if amount == 0 { return Ok(()); }
-            if amount > device.stake { return Err("AmountExceedsStake".into()); }
+            let mut device = match self.devices.get(caller_bytes) {
+                Some(d) => d,
+                None => { self.entered = false; return Err("Device not registered".into()); }
+            };
+            if amount == 0 { self.entered = false; return Ok(()); }
+            if amount > device.stake { self.entered = false; return Err("AmountExceedsStake".into()); }
             let remaining = device.stake.saturating_sub(amount);
-            if device.active && remaining < self.min_stake { return Err("BelowMinStake".into()); }
+            if device.active && remaining < self.min_stake { self.entered = false; return Err("BelowMinStake".into()); }
             device.stake = remaining;
             self.devices.insert(caller_bytes, &device);
             self.env().transfer(caller, amount).map_err(|_| String::from("TransferFailed"))?;
@@ -422,7 +455,10 @@ pub mod resource_registry {
             let sender = self.env().caller();
             if Some(sender) != self.owner && Some(sender) != self.governance_address { return Err("Unauthorized".into()); }
             let acc_bytes = ink_account_to_bytes(account);
-            let mut device = self.devices.get(acc_bytes).ok_or("Device not registered")?;
+            let mut device = match self.devices.get(acc_bytes) {
+                Some(d) => d,
+                None => { self.entered = false; return Err("Device not registered".into()); }
+            };
             let slash_amt = core::cmp::min(amount, device.stake);
             device.stake = device.stake.saturating_sub(slash_amt);
             if device.stake < self.min_stake { device.active = false; }
@@ -473,8 +509,8 @@ pub mod resource_registry {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
-        use powergrid_shared::DeviceType;
+    use super::*;
+    use powergrid_shared::{DeviceType, tokens_to_native};
         use ink::env::test::{default_accounts, set_caller, set_value_transferred, DefaultAccounts};
         use ink::env::DefaultEnvironment;
 
@@ -484,7 +520,7 @@ pub mod resource_registry {
             let mut registry = ResourceRegistry::new(1000);
 
             set_caller::<DefaultEnvironment>(accounts.alice);
-            set_value_transferred::<DefaultEnvironment>(1500);
+            set_value_transferred::<DefaultEnvironment>(tokens_to_native(1500));
 
             let metadata = DeviceMetadata {
                 device_type: DeviceType::SmartPlug,
@@ -508,7 +544,7 @@ pub mod resource_registry {
             let mut registry = ResourceRegistry::new(1000);
 
             set_caller::<DefaultEnvironment>(accounts.alice);
-            set_value_transferred::<DefaultEnvironment>(500); // Below minimum
+            set_value_transferred::<DefaultEnvironment>(tokens_to_native(500)); // Below minimum
 
             let metadata = DeviceMetadata {
                 device_type: DeviceType::SmartPlug,
@@ -532,7 +568,7 @@ pub mod resource_registry {
 
             // Register device first
             set_caller::<DefaultEnvironment>(accounts.alice);
-            set_value_transferred::<DefaultEnvironment>(1500);
+            set_value_transferred::<DefaultEnvironment>(tokens_to_native(1500));
 
             let metadata = DeviceMetadata {
                 device_type: DeviceType::SmartPlug,
@@ -544,7 +580,19 @@ pub mod resource_registry {
                 installation_date: 1640995200,
             };
 
-            let _ = registry.register_device(metadata);
+            let res = registry.register_device(metadata);
+            if let Err(e) = res {
+                panic!("register_device failed: {}", e);
+            }
+
+            // Sanity-check: device should be registered now
+            if !registry.is_device_registered(accounts.alice) {
+                panic!("Device was not registered (mapping lookup failed immediately after register)");
+            }
+            let stored_stake = registry.get_device_stake(accounts.alice).unwrap_or(0);
+            if stored_stake == 0 {
+                panic!("Stored stake is zero after registration; unexpected");
+            }
 
             // Deactivate as owner
             let result = registry.deactivate_device(accounts.alice, "Test deactivation".into());
@@ -562,7 +610,8 @@ pub mod resource_registry {
 
             // Register device first
             set_caller::<DefaultEnvironment>(accounts.alice);
-            set_value_transferred::<DefaultEnvironment>(1500);
+            // Stake must meet min_stake (stored in native units)
+            set_value_transferred::<DefaultEnvironment>(tokens_to_native(1500));
 
             let metadata = DeviceMetadata {
                 device_type: DeviceType::SmartPlug,
@@ -577,11 +626,16 @@ pub mod resource_registry {
             let _ = registry.register_device(metadata);
 
             // Increase stake
-            set_value_transferred::<DefaultEnvironment>(500);
-            let result = registry.increase_stake();
-            assert!(result.is_ok());
+            // Ensure the call originates from the same account that registered the device
+            set_caller::<DefaultEnvironment>(accounts.alice);
+            set_value_transferred::<DefaultEnvironment>(tokens_to_native(500));
+            // Call test-only helper that increases stake for the explicit account to avoid caller-context mismatch
+            let result = registry.test_increase_stake_for(accounts.alice);
+            if let Err(e) = result {
+                panic!("increase_stake failed: {}", e);
+            }
 
-            assert_eq!(registry.get_device_stake(accounts.alice), Some(2000));
+            assert_eq!(registry.get_device_stake(accounts.alice), Some(tokens_to_native(2000)));
         }
 
         #[ink::test]

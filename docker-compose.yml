@@ -12,6 +12,8 @@ services:
     volumes:
       - .:/app  # Sync code changes
     restart: unless-stopped  # Keeps running in background
+    networks:
+      - powergrid-network
 
   tester:
     build:
@@ -24,6 +26,13 @@ services:
       - .:/app  # Sync code changes
     environment:
       - CONTRACTS_NODE=ws://node:9944
+      - DOCKER_NETWORK=powergrid-network
     stdin_open: true
     tty: true
     command: bash  # Interactive shell for running commands
+    networks:
+      - powergrid-network
+
+networks:
+  powergrid-network:
+    driver: bridge

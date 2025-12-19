@@ -223,7 +223,22 @@ The container uses `/tmp/cargo-target` for build artifacts. When you exit, all i
 
 ---
 
-## 6. Next Steps
+## 6. Oracle mock TAPO mode (backend)
+
+The Python oracle service now supports a hardware-free mock of the TAPO P110 smart plug for demos and CI:
+
+- Enable mock mode: set `USE_MOCK_TAPO=true` (default) and optionally `MOCK_TAPO_PROFILE=steady|bursty|idle`.
+- Real hardware: set `USE_MOCK_TAPO=false` **and** provide `TAPO_EMAIL`, `TAPO_PASSWORD`, and `TAPO_DEVICE_IP`.
+- Required blockchain settings (both modes): `SUBSTRATE_RPC_URL`, `DEVICE_OWNER_SEED`, and contract addresses (`TOKEN_CONTRACT_ADDRESS`, `REGISTRY_CONTRACT_ADDRESS`, `GRID_SERVICE_CONTRACT_ADDRESS`, optional `GOVERNANCE_CONTRACT_ADDRESS`).
+- Stake amount: override with `STAKE_AMOUNT_NATIVE` (12-decimal units) or `STAKE_AMOUNT_TOKENS`.
+
+Config is loaded from `.env` in the repo root or `backend/.env` if present. Run the oracle from the repo root:
+
+```bash
+python backend/src/oracle_service.py
+```
+
+## 7. Next Steps
 
 Once setup is complete, explore:
 

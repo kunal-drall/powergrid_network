@@ -11,7 +11,9 @@ NC='\\033[0m'
 # Determine node URL based on environment
 if [ -n "$NODE_URL" ]; then
     WS_URL="$NODE_URL"
+    NODE_CHECK_URL="${NODE_URL/http/ws}"
 elif [ -n "$DOCKER_NETWORK" ]; then
+    # In docker-compose, the node service hostname is "node" per compose file
     WS_URL="ws://node:9944"
     NODE_CHECK_URL="http://node:9944"
 else

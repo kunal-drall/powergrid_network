@@ -42,44 +42,61 @@ class BlockchainClient:
             logger.error(f"❌ Connection failed: {e}")
             return False
     
+    def _find_metadata(self, name: str) -> str:
+        """Locate a contract metadata JSON file.
+
+        Search order:
+        1) backend/config/abis/<name>.json
+        2) contracts/<name>/target/ink/<name>.json (built artifact)
+        """
+        root = Path(__file__).resolve().parent.parent.parent
+        candidates = [
+            root / 'backend' / 'config' / 'abis' / f'{name}.json',
+            root / 'contracts' / name / 'target' / 'ink' / f'{name}.json',
+        ]
+        for path in candidates:
+            if path.exists():
+                return str(path)
+        raise FileNotFoundError(
+            f"Metadata {name}.json not found. Expected at: {', '.join(str(p) for p in candidates)}. "
+            "Build the contract (cargo contract build) or place the ABI in backend/config/abis/."
+        )
+
     def load_contracts(self, token_addr: str, registry_addr: str, 
                        grid_service_addr: str, governance_addr: str = None):
         """Load contract instances"""
         try:
-            abi_dir = Path(__file__).parent.parent / 'config' / 'abis'
-            
-            # Load Token Contract
-            with open(abi_dir / 'powergrid_token.json', 'r') as f:
-                token_metadata = json.load(f)
-            
+            token_meta = self._find_metadata('powergrid_token')
+            registry_meta = self._find_metadata('resource_registry')
+            grid_meta = self._find_metadata('grid_service')
+            governance_meta = self._find_metadata('governance') if governance_addr else None
+
             self.token_contract = ContractInstance.create_from_address(
                 contract_address=token_addr,
-                metadata_file=str(abi_dir / 'powergrid_token.json'),
+                metadata_file=token_meta,
                 substrate=self.substrate
             )
             logger.info(f"✅ Token contract loaded: {token_addr}")
             
-            # Load Registry Contract
             self.registry_contract = ContractInstance.create_from_address(
                 contract_address=registry_addr,
-                metadata_file=str(abi_dir / 'resource_registry.json'),
+                metadata_file=registry_meta,
                 substrate=self.substrate
             )
             logger.info(f"✅ Registry contract loaded: {registry_addr}")
             
-            # Load Grid Service Contract
             self.grid_service_contract = ContractInstance.create_from_address(
                 contract_address=grid_service_addr,
-                metadata_file=str(abi_dir / 'grid_service.json'),
+                metadata_file=grid_meta,
                 substrate=self.substrate
             )
             logger.info(f"✅ Grid Service contract loaded: {grid_service_addr}")
             
             # Load Governance (optional)
-            if governance_addr:
+            if governance_addr and governance_meta:
                 self.governance_contract = ContractInstance.create_from_address(
                     contract_address=governance_addr,
-                    metadata_file=str(abi_dir / 'governance.json'),
+                    metadata_file=governance_meta,
                     substrate=self.substrate
                 )
                 logger.info(f"✅ Governance contract loaded: {governance_addr}")

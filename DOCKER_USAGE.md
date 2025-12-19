@@ -8,15 +8,15 @@ docker build -t powergrid-network .
 ```
 **Note**: First build takes 15-30 minutes (compiles substrate-contracts-node from source)
 
-### Option 1: Start Node with Docker Compose
+### Option 1: Start Node with Docker Compose (recommended)
 ```bash
-# Start the substrate node
-docker-compose up node
+# Start the substrate node (attached to powergrid-network)
+docker compose up -d node
 
-# In another terminal, run tests
-docker-compose run tester bash
-# Then inside container:
-./scripts/test-integration.sh
+# In another terminal, deploy or test from the tester container
+docker compose run --rm tester ./scripts/deploy-local.sh
+# Or drop into a shell with network already wired to the node host "node"
+docker compose run --rm tester bash
 ```
 
 ### Option 2: Interactive Container
@@ -52,7 +52,7 @@ docker stop powergrid-node && docker rm powergrid-node
 
 Once inside the container, you have access to:
 
-- ✅ Rust 1.86.0
+- ✅ Rust 1.88.0
 - ✅ cargo-contract 5.0.1
 - ✅ substrate-contracts-node v0.42.0
 - ✅ All build tools (clang, binaryen, etc.)
@@ -83,13 +83,11 @@ cargo-contract --version
 
 ### Method 1: Using Docker Compose
 ```bash
-# Terminal 1: Start node
-docker-compose up node
+# Terminal 1: Start node (background)
+docker compose up -d node
 
-# Terminal 2: Run tests
-docker-compose run tester bash
-cd /app
-./scripts/test-integration.sh
+# Terminal 2: Run tests from tester (auto networked to node)
+docker compose run --rm tester bash -lc "cd /app && ./scripts/test-integration.sh"
 ```
 
 ### Method 2: Separate Containers
@@ -109,6 +107,8 @@ docker run -it --rm \
   powergrid-network \
   ./scripts/test-integration.sh
 ```
+
+> Compose sets `DOCKER_NETWORK=powergrid-network` for the tester service, so scripts automatically use `ws://node:9944` instead of localhost. If you run containers manually, pass `-e DOCKER_NETWORK=1 -e CONTRACTS_NODE=ws://node:9944` to mirror that behavior.
 
 ## Checking Build Progress
 
@@ -157,7 +157,6 @@ Once the Docker image is built:
 
 3. **Build and deploy contracts**:
    ```bash
-   docker-compose run tester bash
-   cd /app && ./scripts/build-all.sh && ./scripts/deploy-local.sh
+  docker compose run --rm tester bash -lc "cd /app && ./scripts/build-all.sh && ./scripts/deploy-local.sh"
    ```
 
